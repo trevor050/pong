@@ -1,3 +1,4 @@
+const canvasFrame = document.querySelector("#canvasFrame");
 const canvas = document.querySelector("#gameCanvas");
 const ctx = canvas.getContext("2d");
 
@@ -18,8 +19,14 @@ const chaosInput = document.querySelector("#chaosInput");
 const chaosValue = document.querySelector("#chaosValue");
 const scatterBtn = document.querySelector("#scatterBtn");
 const swapSidesBtn = document.querySelector("#swapSidesBtn");
-const dayScoreLabel = document.querySelector("#dayScoreLabel");
-const nightScoreLabel = document.querySelector("#nightScoreLabel");
+
+const scoreNotch = document.querySelector("#scoreNotch");
+const scoreDayLabel = document.querySelector("#dayScoreLabel");
+const scoreNightLabel = document.querySelector("#nightScoreLabel");
+const scoreDayBar = scoreNotch.querySelector(".score-notch__day");
+const scoreNightBar = scoreNotch.querySelector(".score-notch__night");
+
+const dragHandles = document.querySelectorAll(".drag-handle");
 
 const themes = {
   creamSolar: { label: "Cream + Solar Blue", day: "#f7f2e9", night: "#0b3a67", accent: "#f08c42" },
@@ -46,6 +53,10 @@ let minSpeed = 0;
 let maxSpeed = 0;
 let isPlaying = true;
 let animationFrameId = null;
+let frameWidth = 720;
+let frameHeight = 720;
+let resizeRaf = null;
+let pendingSize = null;
 
 const colors = {
   day: themes[settings.themeKey].day,
@@ -53,10 +64,23 @@ const colors = {
   accent: themes[settings.themeKey].accent
 };
 
+function clamp(val, min, max) {
+  return Math.min(Math.max(val, min), max);
+}
+
 function hexToRgb(hex) {
   const parsed = hex.replace("#", "");
   const bigint = parseInt(parsed, 16);
   return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+}
+
+function mixColors(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  const r = Math.round(ca.r + (cb.r - ca.r) * t);
+  const g = Math.round(ca.g + (cb.g - ca.g) * t);
+  const bVal = Math.round(ca.b + (cb.b - ca.b) * t);
+  return `rgb(${r}, ${g}, ${bVal})`;
 }
 
 function rgba(hex, alpha) {
@@ -69,7 +93,17 @@ function updateCssPalette() {
   root.style.setProperty("--day", colors.day);
   root.style.setProperty("--night", colors.night);
   root.style.setProperty("--accent", colors.accent);
-  document.body.style.background = `linear-gradient(160deg, ${colors.night}, #091123 55%, #080d1a)`;
+}
+
+function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio) {
+  const top = mixColors(colors.night, colors.day, clamp(topHalfRatio + 0.2, 0, 1));
+  const mid = mixColors(colors.day, colors.night, 0.5);
+  const bottom = mixColors(colors.day, colors.night, clamp(1 - dayRatio + 0.1, 0, 1));
+  const accentGlow = rgba(colors.accent, 0.2);
+  document.body.style.background = `radial-gradient(80% 70% at 18% 12%, ${rgba(
+    colors.day,
+    0.16
+  )}, transparent 40%), radial-gradient(65% 70% at 80% 12%, ${accentGlow}, transparent 40%), linear-gradient(180deg, ${top} 0%, ${mid} 48%, ${bottom} 100%)`;
 }
 
 function populateThemes() {
@@ -109,27 +143,63 @@ function updateDerived() {
   maxSpeed = 11 * settings.speedMood;
 }
 
-function fitCanvas() {
-  const padding = 48;
-  const target = Math.min(window.innerWidth - padding, window.innerHeight - padding);
-  const clamped = Math.max(420, Math.min(target, 1100));
-  const tiles = Math.floor(clamped / settings.tileSize);
-  gridWidth = tiles;
-  gridHeight = tiles;
-  canvas.width = tiles * settings.tileSize;
-  canvas.height = tiles * settings.tileSize;
-  ballRadius = settings.tileSize * 0.44;
+function remapOwnership(oldOwners, oldW, oldH, newW, newH) {
+  if (!oldOwners || !oldOwners.length) {
+    return Array.from({ length: newW * newH }, (_, idx) => (idx % newW < newW / 2 ? 0 : 1));
+  }
+  const mapped = new Array(newW * newH);
+  for (let y = 0; y < newH; y++) {
+    const srcY = Math.min(oldH - 1, Math.floor((y / newH) * oldH));
+    for (let x = 0; x < newW; x++) {
+      const srcX = Math.min(oldW - 1, Math.floor((x / newW) * oldW));
+      mapped[y * newW + x] = oldOwners[srcY * oldW + srcX];
+    }
+  }
+  return mapped;
 }
 
-function buildGrid() {
-  fitCanvas();
-  ownership = new Array(gridWidth * gridHeight);
-  grid = new Array(gridWidth * gridHeight);
-  for (let idx = 0; idx < ownership.length; idx++) {
-    const x = (idx % gridWidth) * settings.tileSize;
-    const y = Math.floor(idx / gridWidth) * settings.tileSize;
-    ownership[idx] = idx % gridWidth < gridWidth / 2 ? 0 : 1;
-    grid[idx] = { x, y };
+function setFrameSize(width, height, preserveOwnership = true) {
+  const maxW = Math.max(420, window.innerWidth - 48);
+  const maxH = Math.max(420, window.innerHeight - 64);
+  frameWidth = clamp(width, 420, maxW);
+  frameHeight = clamp(height, 420, maxH);
+  rebuildGrid(preserveOwnership);
+}
+
+function rebuildGrid(preserveOwnership = true) {
+  const oldOwnership = preserveOwnership ? ownership.slice() : null;
+  const oldW = gridWidth || 1;
+  const oldH = gridHeight || 1;
+  const oldCanvasW = canvas.width || frameWidth;
+  const oldCanvasH = canvas.height || frameHeight;
+
+  gridWidth = Math.max(8, Math.floor(frameWidth / settings.tileSize));
+  gridHeight = Math.max(8, Math.floor(frameHeight / settings.tileSize));
+  canvas.width = gridWidth * settings.tileSize;
+  canvas.height = gridHeight * settings.tileSize;
+  frameWidth = canvas.width;
+  frameHeight = canvas.height;
+  canvasFrame.style.width = `${frameWidth}px`;
+  canvasFrame.style.height = `${frameHeight}px`;
+
+  ownership = remapOwnership(oldOwnership, oldW, oldH, gridWidth, gridHeight);
+  grid = Array.from({ length: gridWidth * gridHeight }, (_, idx) => ({
+    x: (idx % gridWidth) * settings.tileSize,
+    y: Math.floor(idx / gridWidth) * settings.tileSize
+  }));
+
+  const scaleX = canvas.width / oldCanvasW;
+  const scaleY = canvas.height / oldCanvasH;
+  if (balls.length === 0) {
+    createBalls();
+  } else {
+    balls = balls.map((b) => ({
+      ...b,
+      x: b.x * scaleX,
+      y: b.y * scaleY,
+      vx: b.vx * scaleX,
+      vy: b.vy * scaleY
+    }));
   }
 }
 
@@ -142,7 +212,7 @@ function createBalls() {
 }
 
 function resetGame() {
-  buildGrid();
+  ownership = Array.from({ length: gridWidth * gridHeight }, (_, idx) => (idx % gridWidth < gridWidth / 2 ? 0 : 1));
   createBalls();
 }
 
@@ -206,11 +276,11 @@ function detectCollision(ball) {
 function checkBoundaries(ball) {
   if (ball.x < ballRadius || ball.x > canvas.width - ballRadius) {
     ball.vx = -ball.vx;
-    ball.x = Math.max(ballRadius, Math.min(canvas.width - ballRadius, ball.x));
+    ball.x = clamp(ball.x, ballRadius, canvas.width - ballRadius);
   }
   if (ball.y < ballRadius || ball.y > canvas.height - ballRadius) {
     ball.vy = -ball.vy;
-    ball.y = Math.max(ballRadius, Math.min(canvas.height - ballRadius, ball.y));
+    ball.y = clamp(ball.y, ballRadius, canvas.height - ballRadius);
   }
 }
 
@@ -232,16 +302,33 @@ function updateBall(ball) {
   ball.y += ball.vy;
 }
 
+function updateScoreUI(dayScore, nightScore, topHalfRatio) {
+  const total = dayScore + nightScore || 1;
+  const dayRatio = dayScore / total;
+  scoreDayLabel.textContent = `Day ${dayScore}`;
+  scoreNightLabel.textContent = `Night ${nightScore}`;
+  scoreDayBar.style.width = `${dayRatio * 100}%`;
+  scoreNightBar.style.width = `${(1 - dayRatio) * 100}%`;
+  scoreNotch.classList.toggle("overlay", frameWidth > window.innerWidth * 0.88 || frameHeight > window.innerHeight * 0.8);
+  updateDynamicBackground(dayRatio, topHalfRatio);
+}
+
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   let dayScore = 0;
   let nightScore = 0;
+  let topDay = 0;
+  let topTotal = 0;
 
   grid.forEach((tile, idx) => {
     const owner = ownership[idx];
     drawTile(tile, owner);
     if (owner === 0) dayScore++;
     else nightScore++;
+    if (tile.y < canvas.height / 2) {
+      topTotal++;
+      if (owner === 0) topDay++;
+    }
   });
 
   balls.forEach((ball) => {
@@ -251,8 +338,8 @@ function render() {
     updateBall(ball);
   });
 
-  dayScoreLabel.textContent = `Day ${dayScore}`;
-  nightScoreLabel.textContent = `Night ${nightScore}`;
+  const topHalfRatio = topTotal ? topDay / topTotal : 0.5;
+  updateScoreUI(dayScore, nightScore, topHalfRatio);
 
   if (isPlaying) {
     animationFrameId = requestAnimationFrame(render);
@@ -284,6 +371,52 @@ function applyTheme(key) {
   updateCssPalette();
 }
 
+function attachDragResize() {
+  let activeEdge = null;
+  let startPos = { x: 0, y: 0, w: 0, h: 0 };
+
+  function onMove(e) {
+    if (!activeEdge) return;
+    e.preventDefault();
+    const dx = e.clientX - startPos.x;
+    const dy = e.clientY - startPos.y;
+    let targetW = startPos.w;
+    let targetH = startPos.h;
+    if (activeEdge === "left" || activeEdge === "right") {
+      const delta = activeEdge === "left" ? -dx : dx;
+      targetW = startPos.w + delta * 2;
+    } else if (activeEdge === "top" || activeEdge === "bottom") {
+      const delta = activeEdge === "top" ? -dy : dy;
+      targetH = startPos.h + delta * 2;
+    }
+    pendingSize = { w: targetW, h: targetH };
+    if (!resizeRaf) {
+      resizeRaf = requestAnimationFrame(() => {
+        if (pendingSize) {
+          setFrameSize(pendingSize.w, pendingSize.h, true);
+          pendingSize = null;
+        }
+        resizeRaf = null;
+      });
+    }
+  }
+
+  function onUp() {
+    activeEdge = null;
+    document.removeEventListener("mousemove", onMove);
+    document.removeEventListener("mouseup", onUp);
+  }
+
+  dragHandles.forEach((handle) => {
+    handle.addEventListener("mousedown", (e) => {
+      activeEdge = handle.dataset.edge;
+      startPos = { x: e.clientX, y: e.clientY, w: frameWidth, h: frameHeight };
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    });
+  });
+}
+
 function initControls() {
   populateThemes();
   updateCssPalette();
@@ -292,7 +425,8 @@ function initControls() {
   tileSizeInput.addEventListener("input", (e) => {
     settings.tileSize = nonLinearTileSize(Number(e.target.value));
     tileSizeValue.textContent = `${settings.tileSize}px`;
-    resetGame();
+    ballRadius = settings.tileSize * 0.44;
+    rebuildGrid(true);
   });
 
   speedInput.addEventListener("input", (e) => {
@@ -344,8 +478,14 @@ function initControls() {
   });
 
   window.addEventListener("resize", () => {
-    resetGame();
+    const maxW = Math.max(420, window.innerWidth - 48);
+    const maxH = Math.max(420, window.innerHeight - 64);
+    frameWidth = Math.min(frameWidth, maxW);
+    frameHeight = Math.min(frameHeight, maxH);
+    rebuildGrid(true);
   });
+
+  attachDragResize();
 
   // Initialize slider displays from defaults
   tileSizeInput.value = 45;
@@ -357,13 +497,16 @@ function initControls() {
   tileSizeValue.textContent = `${settings.tileSize}px`;
   speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
   chaosValue.textContent = settings.chaos.toFixed(2);
+  ballRadius = settings.tileSize * 0.44;
   updateDerived();
 }
 
 function start() {
   initControls();
-  buildGrid();
-  createBalls();
+  const initialW = clamp(Math.min(window.innerWidth - 120, 900), 420, window.innerWidth - 48);
+  const initialH = clamp(Math.min(window.innerHeight - 160, 900), 420, window.innerHeight - 64);
+  setFrameSize(initialW, initialH, false);
+  resetGame();
   animationFrameId = requestAnimationFrame(render);
 }
 

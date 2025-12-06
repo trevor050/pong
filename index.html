@@ -15,28 +15,38 @@
 </head>
 <body>
   <div class="bg"></div>
+  <div class="chrome-controls">
+    <button id="playPauseBtn" class="chip" title="Play / Pause">Pause</button>
+    <button id="resetBtn" class="chip" title="Reset simulation">Reset</button>
+    <button id="configBtn" class="chip chip--accent" aria-label="Open settings" title="Settings">Settings</button>
+  </div>
   <main class="shell">
-    <div class="canvas-frame">
+    <div class="canvas-frame" id="canvasFrame">
       <canvas id="gameCanvas" width="720" height="720"></canvas>
-      <div class="score-bar">
-        <span class="score score--day" id="dayScoreLabel">Day 0</span>
-        <span class="score score--night" id="nightScoreLabel">Night 0</span>
+      <div class="score-notch" id="scoreNotch">
+        <div class="score-notch__bar">
+          <div class="score-notch__day"></div>
+          <div class="score-notch__night"></div>
+        </div>
+        <div class="score-notch__labels">
+          <span class="icon" title="Day territory">☀️</span><span class="score" id="dayScoreLabel">Day 0</span>
+          <span class="icon" title="Night territory">🌙</span><span class="score" id="nightScoreLabel">Night 0</span>
+        </div>
       </div>
-      <div class="float-controls">
-        <button id="playPauseBtn" class="chip">Pause</button>
-        <button id="resetBtn" class="chip">Reset</button>
-        <button id="configBtn" class="chip chip--accent" aria-label="Open settings">Settings</button>
-      </div>
+      <div class="drag-handle drag-handle--top" data-edge="top"></div>
+      <div class="drag-handle drag-handle--bottom" data-edge="bottom"></div>
+      <div class="drag-handle drag-handle--left" data-edge="left"></div>
+      <div class="drag-handle drag-handle--right" data-edge="right"></div>
     </div>
   </main>
 
   <aside class="drawer" id="configPanel" aria-label="Settings">
     <div class="drawer__header">
       <div>
-        <p class="eyebrow">Tune</p>
-        <h2>Keep it interesting</h2>
+        <p class="eyebrow">Settings</p>
+        <h2>Dial it in</h2>
       </div>
-      <button id="closeConfig" class="icon-btn" aria-label="Close settings">×</button>
+      <button id="closeConfig" class="icon-btn" aria-label="Close settings" title="Close">×</button>
     </div>
 
     <label class="field">
@@ -55,7 +65,7 @@
       </label>
     </div>
 
-    <div class="field slider-field">
+    <div class="field slider-field" title="Tile size / density">
       <div>
         <span>Tile size</span>
         <small id="tileSizeValue">22px</small>
@@ -63,7 +73,7 @@
       <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="45">
     </div>
 
-    <div class="field slider-field">
+    <div class="field slider-field" title="Overall speed mood (lofi → push)">
       <div>
         <span>Speed mood</span>
         <small id="speedValue">1.00x</small>
@@ -71,7 +81,7 @@
       <input type="range" id="speedInput" min="0" max="100" step="1" value="40">
     </div>
 
-    <div class="field slider-field">
+    <div class="field slider-field" title="Chaos / wobble: more randomness to motion">
       <div>
         <span>Chaos / wobble</span>
         <small id="chaosValue">0.14</small>
