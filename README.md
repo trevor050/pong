@@ -1,17 +1,15 @@
-# Dynamic Pong Wars
+# Day / Nite Drift
 
-A playable, customizable version of [Pong Wars](https://github.com/vnglst/pong-wars) with play/pause, reset, and live color pickers.
-
-**Play it now:** [markodenic.tech/dynamic-pong-wars](https://markodenic.tech/dynamic-pong-wars)
+A hypnotic, art-forward twist on [Pong Wars](https://github.com/vnglst/pong-wars). Tune the palette, speed, and chaos, then let the territories breathe.
 
 ---
 
 ### Features
-- Play / Pause
-- Reset game
-- Change Day & Night colors on the fly
-- Background gradient updates live
-- One file. No dependencies.
+- Play / Pause, Reset, Scatter start, Swap sides
+- Palette presets + custom day/night pickers
+- Speed mood + chaos (wobble) sliders
+- Tile size / density slider for finer or chunkier grids
+- Separated HTML / CSS / JS, no dependencies
 
 ---
 
@@ -19,6 +17,13 @@ A playable, customizable version of [Pong Wars](https://github.com/vnglst/pong-w
 ```bash
 npx serve
 ```
+Then open the served `index.html`.
+
+---
+
+### Versions
+- v0.2.0 — split files, new UI, palettes, and deeper settings
+- v0.1.0 — original import
 
 ---
 

@@ -3,399 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Pong Wars</title>
-  <meta name="description" content="Dynamic Pong Wars – a colorful pong game where balls conquer opposing territory.">
-  <meta name="author" content="Marko Denic">
-  <meta name="theme-color" content="#000000">
+  <title>Day / Nite Drift</title>
+  <meta name="description" content="A hypnotic, art-forward twist on Pong Wars. Pick a palette, tune the chaos, and watch the territories breathe.">
+  <meta name="theme-color" content="#0b3a67">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta property="og:title" content="Dynamic Pong Wars">
-  <meta property="og:description" content="Play Dynamic Pong Wars – conquer the grid with your balls in a colorful pong battle.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://markodenic.tech">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Dynamic Pong Wars">
-  <meta name="twitter:description" content="Play Dynamic Pong Wars – conquer the grid with your balls in a colorful pong battle.">
-
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      background: linear-gradient(to bottom, #000000 0%, #FFFFFF 100%);
-    }
-
-    main {
-      flex: 1;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 15px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-
-    #resetBtn, #playPauseBtn, #configBtn {
-      position: fixed;
-      top: 20px;
-      width: 50px;
-      height: 50px;
-      background: #fff;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-      cursor: pointer;
-      z-index: 1000;
-      transition: background 0.2s, transform 0.15s ease;
-    }
-
-    #resetBtn { right: 140px; }
-    #playPauseBtn { right: 80px; }
-    #configBtn { right: 20px; }
-
-    #resetBtn:active, #playPauseBtn:active, #configBtn:active {
-      transform: scale(0.97);
-    }
-
-    #resetBtn svg, #playPauseBtn svg, #configBtn svg {
-      stroke: #000;
-      width: 30px;
-      height: 30px;
-      fill: none;
-    }
-
-    #configPanel {
-      position: fixed;
-      top: 10px;
-      right: -280px;
-      width: 220px;
-      background: #fff;
-      padding: 75px 25px 25px;
-      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.3);
-      border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      z-index: 999;
-      transition: right 0.18s ease-out;
-    }
-
-    #configPanel.visible { right: 10px; }
-
-    #configPanel label {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      justify-content: space-between;
-    }
-
-    canvas {
-      width: 100%;
-      margin-top: auto;
-      border-radius: 4px;
-      overflow: hidden;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-      display: block;
-    }
-
-    #scoreDisplay {
-      padding: 15px;
-      font-size: 16px;
-      color: white;
-      background: black;
-      border-bottom-left-radius: 6px;
-      border-bottom-right-radius: 6px;
-      display: inline-block;
-    }
-
-    footer {
-      padding: 15px;
-      background: #000;
-      color: #fff;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    footer a { color: #ffc600; }
-  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div id="resetBtn">
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M4 12v-3a3 3 0 0 1 3 -3h13m-3 -3l3 3l-3 3"/>
-    <path d="M20 12v3a3 3 0 0 1 -3 3h-13m3 3l-3 -3l3 -3"/>
-  </svg>
-</div>
+  <div class="atmosphere"></div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="orb"></span>
+      <div>
+        <div class="brand__title">Day / Nite Drift</div>
+        <div class="brand__subtitle">A slower, prettier territory duel</div>
+      </div>
+    </div>
+    <div class="topbar__actions">
+      <button id="playPauseBtn" class="btn ghost" aria-label="Play or pause">Pause</button>
+      <button id="resetBtn" class="btn ghost" aria-label="Reset">Reset</button>
+      <button id="configBtn" class="btn solid" aria-label="Open settings">Settings</button>
+    </div>
+  </header>
 
-<div id="playPauseBtn" data-playing="true">
-  <svg class="play-icon" style="display: none;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M7 4v16l13 -8z" />
-  </svg>
-  <svg class="pause-icon" style="display: block;" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M6 5h4v14h-4z m8 0h4v14h-4z"/>
-  </svg>
-</div>
+  <main class="layout">
+    <section class="canvas-card">
+      <div class="canvas-meta">
+        <div class="pill">Hypnotic mode</div>
+        <div class="pill pill--accent" id="paceLabel">Pace: Drift</div>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="720" height="720"></canvas>
+        <div class="score-bar">
+          <span class="score score--day" id="dayScoreLabel">Day 0</span>
+          <span class="score score--night" id="nightScoreLabel">Night 0</span>
+        </div>
+      </div>
+    </section>
 
-<div id="configBtn">
-  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/>
-    <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/>
-  </svg>
-</div>
+    <aside class="panel" id="configPanel" aria-label="Settings">
+      <div class="panel__header">
+        <div>
+          <p class="eyebrow">Palettes</p>
+          <h2>Paint the vibe</h2>
+        </div>
+        <button id="closeConfig" class="icon-btn" aria-label="Close settings">×</button>
+      </div>
 
-<div id="configPanel">
-  <label>
-    Day color:
-    <input type="color" id="dayColorInput" value="#FFFFFF"/>
-  </label>
-  <label>
-    Night color:
-    <input type="color" id="nightColorInput" value="#000000"/>
-  </label>
-</div>
+      <label class="field">
+        <span>Preset</span>
+        <select id="themeSelect"></select>
+      </label>
 
-<main>
-  <div>
-    <canvas id="gameCanvas" width="600" height="600"></canvas>
-    <div id="scoreDisplay"></div>
-  </div>
-</main>
+      <div class="field grid">
+        <label>
+          <span>Day</span>
+          <input type="color" id="dayColorInput" value="#f7f2e9">
+        </label>
+        <label>
+          <span>Night</span>
+          <input type="color" id="nightColorInput" value="#0b3a67">
+        </label>
+      </div>
 
-<footer>
-  Made by <a href="https://markodenic.tech" target="_blank">Marko Denic</a>. Source on
-  <a href="https://github.com/markodenic/dynamic-pong-wars" target="_blank">GitHub</a>. Inspired by
-  <a href="https://github.com/vnglst/pong-wars" target="_blank">Pong Wars</a>.
-</footer>
+      <div class="panel__section">
+        <p class="eyebrow">Simulation</p>
+        <label class="field slider-field">
+          <div>
+            <span>Tile size</span>
+            <small id="tileSizeValue">22px</small>
+          </div>
+          <input type="range" id="tileSizeInput" min="16" max="32" step="1" value="22">
+        </label>
 
-<script>
-  const canvas = document.querySelector("#gameCanvas");
-  const ctx = canvas.getContext("2d");
-  const scoreDisplay = document.querySelector("#scoreDisplay");
-  const dayColorInput = document.querySelector("#dayColorInput");
-  const nightColorInput = document.querySelector("#nightColorInput");
-  const configBtn = document.querySelector("#configBtn");
-  const configPanel = document.querySelector("#configPanel");
-  const resetBtn = document.querySelector("#resetBtn");
-  const playPauseBtn = document.querySelector("#playPauseBtn");
-  const playIcon = playPauseBtn.querySelector(".play-icon");
-  const pauseIcon = playPauseBtn.querySelector(".pause-icon");
+        <label class="field slider-field">
+          <div>
+            <span>Speed mood</span>
+            <small id="speedValue">1.00x</small>
+          </div>
+          <input type="range" id="speedInput" min="0.7" max="1.6" step="0.05" value="1">
+        </label>
 
-  const TILE_SIZE = 25;
-  const MAX_SPEED = 10;
-  const MIN_SPEED = 5;
-  const ACCELERATION = 0.1;
+        <label class="field slider-field">
+          <div>
+            <span>Chaos / wobble</span>
+            <small id="chaosValue">0.14</small>
+          </div>
+          <input type="range" id="chaosInput" min="0" max="0.35" step="0.01" value="0.14">
+        </label>
+      </div>
 
-  let dayColor = "#FFFFFF";
-  let nightColor = "#000000";
-  let dayScore = 0;
-  let nightScore = 0;
-  let iteration = 0;
-  let isPlaying = true;
-  let animationFrameId = null;
+      <div class="panel__section">
+        <p class="eyebrow">Remix</p>
+        <div class="remix-row">
+          <button id="scatterBtn" class="btn ghost">Scatter start</button>
+          <button id="swapSidesBtn" class="btn ghost">Swap sides</button>
+        </div>
+      </div>
+    </aside>
+  </main>
 
-  const gridWidth = canvas.width / TILE_SIZE;
-  const gridHeight = canvas.height / TILE_SIZE;
+  <footer class="footer">
+    <div>Made for zoning out. Original concept by Marko Denic · Inspired by Pong Wars.</div>
+    <div class="footer__links">
+      <a href="https://markodenic.tech" target="_blank" rel="noreferrer">markodenic.tech</a>
+      <a href="https://github.com/markodenic/dynamic-pong-wars" target="_blank" rel="noreferrer">Source</a>
+      <a href="https://github.com/vnglst/pong-wars" target="_blank" rel="noreferrer">Pong Wars</a>
+    </div>
+  </footer>
 
-  const ownership = new Array(gridWidth * gridHeight).fill(0).map((_, idx) =>
-                                                                      idx % gridWidth < gridWidth / 2 ? 0 : 1
-  );
-
-  const grid = new Array(gridWidth * gridHeight).fill(0).map((_, idx) => ({
-    x: (idx % gridWidth) * TILE_SIZE,
-    y: Math.floor(idx / gridWidth) * TILE_SIZE,
-    get color() {
-      return ownership[idx] === 0 ? dayColor : nightColor;
-    }
-  }));
-
-  const balls = [
-    {
-      x: canvas.width / 4,
-      y: canvas.height / 2,
-      vx: 8,
-      vy: -8,
-      get color() { return nightColor; },
-      get targetColor() { return dayColor; }
-    },
-    {
-      x: (canvas.width / 4) * 3,
-      y: canvas.height / 2,
-      vx: -8,
-      vy: 8,
-      get color() { return dayColor; },
-      get targetColor() { return nightColor; }
-    }
-  ];
-
-  function toggleConfigPanel() {
-    configPanel.classList.toggle("visible");
-  }
-
-  function togglePlayPause() {
-    isPlaying = !isPlaying;
-    playIcon.style.display = isPlaying ? "none" : "block";
-    pauseIcon.style.display = isPlaying ? "block" : "none";
-    playPauseBtn.dataset.playing = isPlaying;
-    if (isPlaying) {
-      animationFrameId = requestAnimationFrame(render);
-    } else {
-      cancelAnimationFrame(animationFrameId);
-    }
-  }
-
-  function updateBackground() {
-    document.body.style.background = `linear-gradient(to bottom, ${nightColor} 0%, ${dayColor} 100%)`;
-  }
-
-  function drawTile(tile) {
-    ctx.fillStyle = tile.color;
-    ctx.fillRect(tile.x, tile.y, TILE_SIZE, TILE_SIZE);
-  }
-
-  function drawBall(ball) {
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, TILE_SIZE / 2, 0, Math.PI * 2);
-    ctx.fillStyle = ball.color;
-    ctx.fill();
-    ctx.closePath();
-  }
-
-  function detectCollision(ball) {
-    const ballRect = {
-      left: ball.x - TILE_SIZE / 2,
-      right: ball.x + TILE_SIZE / 2,
-      top: ball.y - TILE_SIZE / 2,
-      bottom: ball.y + TILE_SIZE / 2
-    };
-    grid.forEach((tile, idx) => {
-      const tileRect = {
-        left: tile.x,
-        right: tile.x + TILE_SIZE,
-        top: tile.y,
-        bottom: tile.y + TILE_SIZE
-      };
-      if (
-          ballRect.right > tileRect.left &&
-          ballRect.left < tileRect.right &&
-          ballRect.bottom > tileRect.top &&
-          ballRect.top < tileRect.bottom &&
-          ownership[idx] !== (ball === balls[0] ? 0 : 1)
-      ) {
-        ownership[idx] = ball === balls[0] ? 0 : 1;
-        const dx = ball.x - (tile.x + TILE_SIZE / 2);
-        const dy = ball.y - (tile.y + TILE_SIZE / 2);
-        if (Math.abs(dx) > Math.abs(dy)) {
-          ball.vx = -ball.vx;
-        } else {
-          ball.vy = -ball.vy;
-        }
-      }
-    });
-  }
-
-  function checkBoundaries(ball) {
-    if (ball.x < TILE_SIZE / 2 || ball.x > canvas.width - TILE_SIZE / 2) {
-      ball.vx = -ball.vx;
-      ball.x = Math.max(TILE_SIZE / 2, Math.min(canvas.width - TILE_SIZE / 2, ball.x));
-    }
-    if (ball.y < TILE_SIZE / 2 || ball.y > canvas.height - TILE_SIZE / 2) {
-      ball.vy = -ball.vy;
-      ball.y = Math.max(TILE_SIZE / 2, Math.min(canvas.height - TILE_SIZE / 2, ball.y));
-    }
-  }
-
-  function updateBall(ball) {
-    ball.vx += (Math.random() - 0.5) * ACCELERATION;
-    ball.vy += (Math.random() - 0.5) * ACCELERATION;
-    const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
-    if (speed > MAX_SPEED) {
-      const scale = MAX_SPEED / speed;
-      ball.vx *= scale;
-      ball.vy *= scale;
-    }
-    if (speed < MIN_SPEED) {
-      const scale = MIN_SPEED / speed;
-      ball.vx *= scale;
-      ball.vy *= scale;
-    }
-    ball.x += ball.vx;
-    ball.y += ball.vy;
-  }
-
-  function resetGame() {
-    ownership.forEach((_, idx) => {
-      ownership[idx] = idx % gridWidth < gridWidth / 2 ? 0 : 1;
-    });
-    balls[0].x = canvas.width / 4;
-    balls[0].y = canvas.height / 2;
-    balls[0].vx = 8;
-    balls[0].vy = -8;
-    balls[1].x = (canvas.width / 4) * 3;
-    balls[1].y = canvas.height / 2;
-    balls[1].vx = -8;
-    balls[1].vy = 8;
-    iteration = 0;
-    if (!isPlaying) togglePlayPause();
-  }
-
-  function render() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    dayScore = 0;
-    nightScore = 0;
-    grid.forEach((tile, idx) => {
-      drawTile(tile);
-      if (ownership[idx] === 0) dayScore++;
-      if (ownership[idx] === 1) nightScore++;
-    });
-    scoreDisplay.textContent = `Day: ${dayScore} | Night: ${nightScore}`;
-    balls.forEach(ball => {
-      drawBall(ball);
-      detectCollision(ball);
-      checkBoundaries(ball);
-      updateBall(ball);
-    });
-    iteration++;
-    if (iteration % 1000 === 0) console.log("Iteration:", iteration);
-    if (isPlaying) {
-      animationFrameId = requestAnimationFrame(render);
-    }
-  }
-
-  function updateAllColors() {
-    balls[0].color = nightColor;
-    balls[1].color = dayColor;
-    updateBackground();
-  }
-
-  function handleDayColorChange(e) {
-    dayColor = e.target.value;
-    updateAllColors();
-  }
-
-  function handleNightColorChange(e) {
-    nightColor = e.target.value;
-    updateAllColors();
-  }
-
-  configBtn.addEventListener("click", toggleConfigPanel);
-  resetBtn.addEventListener("click", resetGame);
-  playPauseBtn.addEventListener("click", togglePlayPause);
-  dayColorInput.addEventListener("input", handleDayColorChange);
-  nightColorInput.addEventListener("input", handleNightColorChange);
-
-  updateBackground();
-  animationFrameId = requestAnimationFrame(render);
-</script>
+  <script src="script.js" defer></script>
 </body>
 </html>
