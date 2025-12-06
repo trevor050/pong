@@ -27,17 +27,18 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(90% 90% at 15% 10%, rgba(247, 242, 233, 0.2), transparent 32%), radial-gradient(80% 70% at 80% 15%, rgba(240, 140, 66, 0.14), transparent 36%);
-  opacity: 0.9;
+  background: radial-gradient(90% 90% at 15% 10%, rgba(255, 255, 255, 0.08), transparent 32%), radial-gradient(80% 70% at 80% 15%, rgba(255, 255, 255, 0.05), transparent 36%);
+  opacity: 0.75;
 }
 
 .chrome-controls {
   position: fixed;
   top: 12px;
   right: 14px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 42px);
   gap: 8px;
-  z-index: 10;
+  z-index: 12;
 }
 
 .shell {
@@ -74,15 +75,14 @@ canvas {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: -32px;
-  width: 76%;
-  max-width: 520px;
+  bottom: -36px;
+  width: min(78%, 520px);
   background: rgba(5, 8, 18, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 22px;
-  padding: 8px 14px 12px;
+  border-radius: 26px;
+  padding: 10px 16px 14px;
   box-shadow: 0 14px 45px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
 }
 
 .score-notch.overlay {
@@ -91,15 +91,17 @@ canvas {
   transform: none;
   bottom: 12px;
   width: auto;
+  background: rgba(8, 10, 18, 0.48);
+  backdrop-filter: blur(12px);
 }
 
 .score-notch__bar {
   position: relative;
-  height: 10px;
+  height: 12px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.06);
-  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-bottom: 10px;
 }
 
 .score-notch__day,
@@ -111,19 +113,19 @@ canvas {
 
 .score-notch__day {
   left: 0;
-  background: linear-gradient(90deg, var(--day), rgba(255, 255, 255, 0.4));
+  background: linear-gradient(90deg, var(--day), rgba(255, 255, 255, 0.35));
 }
 
 .score-notch__night {
-  right: 0;
+  right: auto;
   background: linear-gradient(90deg, rgba(0, 0, 0, 0.2), var(--accent));
 }
 
 .score-notch__labels {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
 .score {
@@ -133,23 +135,6 @@ canvas {
 
 .icon {
   opacity: 0.9;
-}
-
-.chip {
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f9fbff;
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-  cursor: pointer;
-}
-
-.chip--accent {
-  background: var(--accent);
-  color: #0d0f1a;
-  border: none;
 }
 
 .drawer {
@@ -167,6 +152,7 @@ canvas {
   flex-direction: column;
   gap: 12px;
   transition: right 0.18s ease-out;
+  z-index: 8;
 }
 
 .drawer.open {
@@ -207,6 +193,9 @@ h2 {
 .field span {
   color: #f4f5f7;
   font-weight: 600;
+  padding-bottom: 2px;
+  line-height: 1.25;
+  margin-bottom: 2px;
 }
 
 .field small {
@@ -216,7 +205,7 @@ h2 {
 .field.grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px 12px;
 }
 
 input[type="color"],
@@ -234,6 +223,7 @@ input[type="range"] {
 input[type="color"] {
   padding: 4px;
   height: 44px;
+  margin-top: 6px;
 }
 
 select {
@@ -276,14 +266,26 @@ select {
 }
 
 .icon-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
   color: #f9fafc;
   font-size: 20px;
   cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(10px);
+}
+
+.icon-btn.ghost {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.icon-shape {
+  font-size: 16px;
 }
 
 .drag-handle {

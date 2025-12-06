@@ -11,6 +11,7 @@ const configPanel = document.querySelector("#configPanel");
 const themeSelect = document.querySelector("#themeSelect");
 const dayColorInput = document.querySelector("#dayColorInput");
 const nightColorInput = document.querySelector("#nightColorInput");
+const ballStyleSelect = document.querySelector("#ballStyleSelect");
 const tileSizeInput = document.querySelector("#tileSizeInput");
 const tileSizeValue = document.querySelector("#tileSizeValue");
 const speedInput = document.querySelector("#speedInput");
@@ -33,14 +34,18 @@ const themes = {
   duskLilac: { label: "Dusked Lilac", day: "#f6e8ff", night: "#201430", accent: "#cfa3ff" },
   mossSea: { label: "Moss & Sea", day: "#e8f1e2", night: "#0f2b2e", accent: "#6ed0b6" },
   emberGlass: { label: "Ember Glass", day: "#f8ead8", night: "#261213", accent: "#ff7a66" },
-  glacier: { label: "Glacier Fade", day: "#e9f4ff", night: "#0d203c", accent: "#7cc7ff" }
+  glacier: { label: "Glacier Fade", day: "#e9f4ff", night: "#0d203c", accent: "#7cc7ff" },
+  auroraMist: { label: "Aurora Mist", day: "#e8f7ff", night: "#0a1e2f", accent: "#7de0c0" },
+  velvetRose: { label: "Velvet Rose", day: "#fdf1f3", night: "#2a0f24", accent: "#ff6f91" },
+  sandStorm: { label: "Sandstorm", day: "#f5e8d0", night: "#2b1c0f", accent: "#f2a65a" }
 };
 
 const settings = {
   themeKey: "creamSolar",
   tileSize: 22,
   speedMood: 1,
-  chaos: 0.14
+  chaos: 0.14,
+  ballStyle: "solid"
 };
 
 let grid = [];
@@ -96,14 +101,12 @@ function updateCssPalette() {
 }
 
 function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio) {
-  const top = mixColors(colors.night, colors.day, clamp(topHalfRatio + 0.2, 0, 1));
+  const top = mixColors(colors.night, colors.day, clamp(topHalfRatio + 0.15, 0, 1));
   const mid = mixColors(colors.day, colors.night, 0.5);
-  const bottom = mixColors(colors.day, colors.night, clamp(1 - dayRatio + 0.1, 0, 1));
-  const accentGlow = rgba(colors.accent, 0.2);
-  document.body.style.background = `radial-gradient(80% 70% at 18% 12%, ${rgba(
-    colors.day,
-    0.16
-  )}, transparent 40%), radial-gradient(65% 70% at 80% 12%, ${accentGlow}, transparent 40%), linear-gradient(180deg, ${top} 0%, ${mid} 48%, ${bottom} 100%)`;
+  const bottom = mixColors(colors.day, colors.night, clamp(1 - dayRatio + 0.05, 0, 1));
+  const softDay = rgba(colors.day, 0.12);
+  const softNight = rgba(colors.night, 0.12);
+  document.body.style.background = `radial-gradient(90% 70% at 18% 12%, ${softDay}, transparent 42%), radial-gradient(80% 70% at 80% 12%, ${softNight}, transparent 42%), linear-gradient(180deg, ${top} 0%, ${mid} 50%, ${bottom} 100%)`;
 }
 
 function populateThemes() {
@@ -128,9 +131,10 @@ function nonLinearTileSize(raw) {
 }
 
 function nonLinearSpeed(raw) {
-  const base = 0.35;
-  const t = Math.pow(raw / 100, 2.2);
-  return base + t * 2.1;
+  const t = raw / 100;
+  const gentle = Math.pow(t, 2.2) * 3; // precise at low end
+  const surge = Math.pow(Math.max(0, t - 0.6) / 0.4, 2.8) * 6; // big top-end kick
+  return 0.25 + gentle + surge;
 }
 
 function nonLinearChaos(raw) {
@@ -218,7 +222,7 @@ function resetGame() {
 
 function togglePlayPause() {
   isPlaying = !isPlaying;
-  playPauseBtn.textContent = isPlaying ? "Pause" : "Play";
+  playPauseBtn.querySelector(".icon-shape").textContent = isPlaying ? "❚❚" : "▶︎";
   if (isPlaying) {
     animationFrameId = requestAnimationFrame(render);
   } else {
@@ -241,11 +245,15 @@ function drawBall(ball) {
   const color = ball.owner === 0 ? colors.day : colors.night;
   ctx.fillStyle = color;
   ctx.strokeStyle = colors.accent;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = settings.ballStyle === "ring" ? 3 : 2;
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
+  if (settings.ballStyle === "ring") {
+    ctx.stroke();
+  } else {
+    ctx.fill();
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -308,6 +316,7 @@ function updateScoreUI(dayScore, nightScore, topHalfRatio) {
   scoreDayLabel.textContent = `Day ${dayScore}`;
   scoreNightLabel.textContent = `Night ${nightScore}`;
   scoreDayBar.style.width = `${dayRatio * 100}%`;
+  scoreNightBar.style.left = `${dayRatio * 100}%`;
   scoreNightBar.style.width = `${(1 - dayRatio) * 100}%`;
   scoreNotch.classList.toggle("overlay", frameWidth > window.innerWidth * 0.88 || frameHeight > window.innerHeight * 0.8);
   updateDynamicBackground(dayRatio, topHalfRatio);
@@ -430,7 +439,10 @@ function initControls() {
   });
 
   speedInput.addEventListener("input", (e) => {
-    settings.speedMood = nonLinearSpeed(Number(e.target.value));
+    const target = nonLinearSpeed(Number(e.target.value));
+    const delta = Math.abs(target - settings.speedMood);
+    const blend = delta > 0.5 ? 0.35 : 1; // precise on small moves, eased on big moves
+    settings.speedMood = blend === 1 ? target : settings.speedMood + (target - settings.speedMood) * blend;
     speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
     updateDerived();
   });
@@ -454,6 +466,10 @@ function initControls() {
     colors.night = e.target.value;
     themeSelect.value = "custom";
     updateCssPalette();
+  });
+
+  ballStyleSelect.addEventListener("change", (e) => {
+    settings.ballStyle = e.target.value;
   });
 
   playPauseBtn.addEventListener("click", togglePlayPause);
@@ -494,6 +510,7 @@ function initControls() {
   settings.tileSize = nonLinearTileSize(Number(tileSizeInput.value));
   settings.speedMood = nonLinearSpeed(Number(speedInput.value));
   settings.chaos = nonLinearChaos(Number(chaosInput.value));
+  settings.ballStyle = ballStyleSelect.value;
   tileSizeValue.textContent = `${settings.tileSize}px`;
   speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
   chaosValue.textContent = settings.chaos.toFixed(2);
@@ -507,6 +524,7 @@ function start() {
   const initialH = clamp(Math.min(window.innerHeight - 160, 900), 420, window.innerHeight - 64);
   setFrameSize(initialW, initialH, false);
   resetGame();
+  playPauseBtn.querySelector(".icon-shape").textContent = "❚❚";
   animationFrameId = requestAnimationFrame(render);
 }
 

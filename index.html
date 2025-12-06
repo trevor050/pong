@@ -16,9 +16,15 @@
 <body>
   <div class="bg"></div>
   <div class="chrome-controls">
-    <button id="playPauseBtn" class="chip" title="Play / Pause">Pause</button>
-    <button id="resetBtn" class="chip" title="Reset simulation">Reset</button>
-    <button id="configBtn" class="chip chip--accent" aria-label="Open settings" title="Settings">Settings</button>
+    <button id="playPauseBtn" class="icon-btn glass" title="Play / Pause" aria-label="Play / Pause">
+      <span class="icon-shape">▶︎</span>
+    </button>
+    <button id="resetBtn" class="icon-btn glass" title="Reset simulation" aria-label="Reset">
+      <span class="icon-shape">↺</span>
+    </button>
+    <button id="configBtn" class="icon-btn glass" aria-label="Open settings" title="Settings">
+      <span class="icon-shape">⚙︎</span>
+    </button>
   </div>
   <main class="shell">
     <div class="canvas-frame" id="canvasFrame">
@@ -29,8 +35,8 @@
           <div class="score-notch__night"></div>
         </div>
         <div class="score-notch__labels">
-          <span class="icon" title="Day territory">☀️</span><span class="score" id="dayScoreLabel">Day 0</span>
-          <span class="icon" title="Night territory">🌙</span><span class="score" id="nightScoreLabel">Night 0</span>
+          <span class="score" id="dayScoreLabel">Day 0</span>
+          <span class="score" id="nightScoreLabel">Night 0</span>
         </div>
       </div>
       <div class="drag-handle drag-handle--top" data-edge="top"></div>
@@ -44,9 +50,9 @@
     <div class="drawer__header">
       <div>
         <p class="eyebrow">Settings</p>
-        <h2>Dial it in</h2>
+        <h2>Controls</h2>
       </div>
-      <button id="closeConfig" class="icon-btn" aria-label="Close settings" title="Close">×</button>
+      <button id="closeConfig" class="icon-btn ghost" aria-label="Close settings" title="Close">×</button>
     </div>
 
     <label class="field">
@@ -64,6 +70,14 @@
         <input type="color" id="nightColorInput" value="#0b3a67">
       </label>
     </div>
+
+    <label class="field" title="Choose between outlined rings or solid circles">
+      <span>Ball style</span>
+      <select id="ballStyleSelect">
+        <option value="ring">Ring</option>
+        <option value="solid" selected>Solid</option>
+      </select>
+    </label>
 
     <div class="field slider-field" title="Tile size / density">
       <div>
