@@ -7,8 +7,9 @@ A hypnotic, art-forward twist on [Pong Wars](https://github.com/vnglst/pong-wars
 ### Features
 - Play / Pause, Reset, Scatter start, Swap sides
 - Palette presets + custom day/night pickers
-- Speed mood + chaos (wobble) sliders
-- Tile size / density slider for finer or chunkier grids
+- Non-linear Speed / Chaos sliders for slow drifts or wild swings
+- Density (tile size) slider with higher extremes
+- Drawer-style settings; main view stays focused on the sim
 - Separated HTML / CSS / JS, no dependencies
 
 ---

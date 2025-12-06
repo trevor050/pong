@@ -18,41 +18,15 @@ const chaosInput = document.querySelector("#chaosInput");
 const chaosValue = document.querySelector("#chaosValue");
 const scatterBtn = document.querySelector("#scatterBtn");
 const swapSidesBtn = document.querySelector("#swapSidesBtn");
-const paceLabel = document.querySelector("#paceLabel");
 const dayScoreLabel = document.querySelector("#dayScoreLabel");
 const nightScoreLabel = document.querySelector("#nightScoreLabel");
 
 const themes = {
-  creamSolar: {
-    label: "Cream + Solar Blue",
-    day: "#f7f2e9",
-    night: "#0b3a67",
-    accent: "#f08c42"
-  },
-  duskLilac: {
-    label: "Dusked Lilac",
-    day: "#f6e8ff",
-    night: "#201430",
-    accent: "#cfa3ff"
-  },
-  mossSea: {
-    label: "Moss & Sea",
-    day: "#e8f1e2",
-    night: "#0f2b2e",
-    accent: "#6ed0b6"
-  },
-  emberGlass: {
-    label: "Ember Glass",
-    day: "#f8ead8",
-    night: "#261213",
-    accent: "#ff7a66"
-  },
-  glacier: {
-    label: "Glacier Fade",
-    day: "#e9f4ff",
-    night: "#0d203c",
-    accent: "#7cc7ff"
-  }
+  creamSolar: { label: "Cream + Solar Blue", day: "#f7f2e9", night: "#0b3a67", accent: "#f08c42" },
+  duskLilac: { label: "Dusked Lilac", day: "#f6e8ff", night: "#201430", accent: "#cfa3ff" },
+  mossSea: { label: "Moss & Sea", day: "#e8f1e2", night: "#0f2b2e", accent: "#6ed0b6" },
+  emberGlass: { label: "Ember Glass", day: "#f8ead8", night: "#261213", accent: "#ff7a66" },
+  glacier: { label: "Glacier Fade", day: "#e9f4ff", night: "#0d203c", accent: "#7cc7ff" }
 };
 
 const settings = {
@@ -72,7 +46,6 @@ let minSpeed = 0;
 let maxSpeed = 0;
 let isPlaying = true;
 let animationFrameId = null;
-let iteration = 0;
 
 const colors = {
   day: themes[settings.themeKey].day,
@@ -83,11 +56,7 @@ const colors = {
 function hexToRgb(hex) {
   const parsed = hex.replace("#", "");
   const bigint = parseInt(parsed, 16);
-  return {
-    r: (bigint >> 16) & 255,
-    g: (bigint >> 8) & 255,
-    b: bigint & 255
-  };
+  return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
 }
 
 function rgba(hex, alpha) {
@@ -100,11 +69,7 @@ function updateCssPalette() {
   root.style.setProperty("--day", colors.day);
   root.style.setProperty("--night", colors.night);
   root.style.setProperty("--accent", colors.accent);
-  document.body.style.background = [
-    `radial-gradient(120% 140% at 15% 10%, ${rgba(colors.day, 0.38)}, transparent 35%)`,
-    `radial-gradient(110% 120% at 80% 10%, ${rgba(colors.accent, 0.2)}, transparent 35%)`,
-    `linear-gradient(145deg, ${colors.night} 0%, #0a1b31 55%, #0a0f1e 100%)`
-  ].join(",");
+  document.body.style.background = `linear-gradient(160deg, ${colors.night}, #091123 55%, #080d1a)`;
 }
 
 function populateThemes() {
@@ -121,28 +86,43 @@ function populateThemes() {
   themeSelect.value = settings.themeKey;
 }
 
-function updateSpeedTargets() {
-  minSpeed = 4 * settings.speedMood;
-  maxSpeed = 9.5 * settings.speedMood;
-  paceLabel.textContent =
-    settings.speedMood < 0.9
-      ? "Pace: Lofi"
-      : settings.speedMood < 1.2
-      ? "Pace: Drift"
-      : "Pace: Push";
+function nonLinearTileSize(raw) {
+  const min = 14;
+  const max = 52;
+  const t = Math.pow(raw / 100, 1.7);
+  return Math.round(min + t * (max - min));
 }
 
-function resizeCanvasForGrid() {
-  const maxSize = 720;
-  gridWidth = Math.floor(maxSize / settings.tileSize);
-  gridHeight = gridWidth;
-  canvas.width = gridWidth * settings.tileSize;
-  canvas.height = gridHeight * settings.tileSize;
+function nonLinearSpeed(raw) {
+  const base = 0.35;
+  const t = Math.pow(raw / 100, 2.2);
+  return base + t * 2.1;
+}
+
+function nonLinearChaos(raw) {
+  const t = Math.pow(raw / 100, 2.4);
+  return parseFloat((t * 1.1).toFixed(3));
+}
+
+function updateDerived() {
+  minSpeed = 3.5 * settings.speedMood;
+  maxSpeed = 11 * settings.speedMood;
+}
+
+function fitCanvas() {
+  const padding = 48;
+  const target = Math.min(window.innerWidth - padding, window.innerHeight - padding);
+  const clamped = Math.max(420, Math.min(target, 1100));
+  const tiles = Math.floor(clamped / settings.tileSize);
+  gridWidth = tiles;
+  gridHeight = tiles;
+  canvas.width = tiles * settings.tileSize;
+  canvas.height = tiles * settings.tileSize;
   ballRadius = settings.tileSize * 0.44;
 }
 
 function buildGrid() {
-  resizeCanvasForGrid();
+  fitCanvas();
   ownership = new Array(gridWidth * gridHeight);
   grid = new Array(gridWidth * gridHeight);
   for (let idx = 0; idx < ownership.length; idx++) {
@@ -154,7 +134,7 @@ function buildGrid() {
 }
 
 function createBalls() {
-  const base = 6 * settings.speedMood;
+  const base = 5.5 * settings.speedMood;
   balls = [
     { owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: base, vy: -base },
     { owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: -base, vy: base }
@@ -162,7 +142,6 @@ function createBalls() {
 }
 
 function resetGame() {
-  iteration = 0;
   buildGrid();
   createBalls();
 }
@@ -190,16 +169,13 @@ function drawTile(tile, owner) {
 function drawBall(ball) {
   ctx.save();
   const color = ball.owner === 0 ? colors.day : colors.night;
-  const glow = rgba(color, 0.4);
-  ctx.shadowBlur = 18;
-  ctx.shadowColor = glow;
-  const gradient = ctx.createRadialGradient(ball.x, ball.y, ballRadius * 0.2, ball.x, ball.y, ballRadius);
-  gradient.addColorStop(0, rgba(color, 1));
-  gradient.addColorStop(1, rgba(color, 0.1));
-  ctx.fillStyle = gradient;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = colors.accent;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ballRadius, 0, Math.PI * 2);
   ctx.fill();
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -214,13 +190,7 @@ function detectCollision(ball) {
     const tileRight = tile.x + settings.tileSize;
     const tileTop = tile.y;
     const tileBottom = tile.y + settings.tileSize;
-    if (
-      right > tileLeft &&
-      left < tileRight &&
-      bottom > tileTop &&
-      top < tileBottom &&
-      ownership[idx] !== ball.owner
-    ) {
+    if (right > tileLeft && left < tileRight && bottom > tileTop && top < tileBottom && ownership[idx] !== ball.owner) {
       ownership[idx] = ball.owner;
       const dx = ball.x - (tile.x + settings.tileSize / 2);
       const dy = ball.y - (tile.y + settings.tileSize / 2);
@@ -284,7 +254,6 @@ function render() {
   dayScoreLabel.textContent = `Day ${dayScore}`;
   nightScoreLabel.textContent = `Night ${nightScore}`;
 
-  iteration++;
   if (isPlaying) {
     animationFrameId = requestAnimationFrame(render);
   }
@@ -296,10 +265,11 @@ function scatterStart() {
 
 function swapSides() {
   ownership = ownership.map((owner) => (owner === 0 ? 1 : 0));
-  const first = balls[0];
-  const second = balls[1];
-  balls[0] = { ...first, owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: Math.abs(first.vx) * -1, vy: first.vy };
-  balls[1] = { ...second, owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: Math.abs(second.vx), vy: second.vy };
+  const [first, second] = balls;
+  balls = [
+    { ...first, owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: -Math.abs(first.vx), vy: first.vy },
+    { ...second, owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: Math.abs(second.vx), vy: second.vy }
+  ];
 }
 
 function applyTheme(key) {
@@ -317,13 +287,24 @@ function applyTheme(key) {
 function initControls() {
   populateThemes();
   updateCssPalette();
-  updateSpeedTargets();
-  tileSizeValue.textContent = `${settings.tileSize}px`;
-  speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
-  chaosValue.textContent = settings.chaos.toFixed(2);
-  tileSizeInput.value = settings.tileSize;
-  speedInput.value = settings.speedMood;
-  chaosInput.value = settings.chaos;
+  updateDerived();
+
+  tileSizeInput.addEventListener("input", (e) => {
+    settings.tileSize = nonLinearTileSize(Number(e.target.value));
+    tileSizeValue.textContent = `${settings.tileSize}px`;
+    resetGame();
+  });
+
+  speedInput.addEventListener("input", (e) => {
+    settings.speedMood = nonLinearSpeed(Number(e.target.value));
+    speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
+    updateDerived();
+  });
+
+  chaosInput.addEventListener("input", (e) => {
+    settings.chaos = nonLinearChaos(Number(e.target.value));
+    chaosValue.textContent = settings.chaos.toFixed(2);
+  });
 
   themeSelect.addEventListener("change", (e) => {
     applyTheme(e.target.value);
@@ -341,30 +322,13 @@ function initControls() {
     updateCssPalette();
   });
 
-  tileSizeInput.addEventListener("input", (e) => {
-    settings.tileSize = Number(e.target.value);
-    tileSizeValue.textContent = `${settings.tileSize}px`;
-    resetGame();
-  });
-
-  speedInput.addEventListener("input", (e) => {
-    settings.speedMood = Number(e.target.value);
-    speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
-    updateSpeedTargets();
-  });
-
-  chaosInput.addEventListener("input", (e) => {
-    settings.chaos = Number(e.target.value);
-    chaosValue.textContent = settings.chaos.toFixed(2);
-  });
-
   playPauseBtn.addEventListener("click", togglePlayPause);
   resetBtn.addEventListener("click", () => {
     resetGame();
     if (!isPlaying) togglePlayPause();
   });
 
-  configBtn.addEventListener("click", () => toggleSettings());
+  configBtn.addEventListener("click", () => toggleSettings(true));
   closeConfigBtn.addEventListener("click", () => toggleSettings(false));
 
   scatterBtn.addEventListener("click", scatterStart);
@@ -376,12 +340,28 @@ function initControls() {
       e.preventDefault();
       togglePlayPause();
     }
+    if (e.key.toLowerCase() === "s") toggleSettings();
   });
+
+  window.addEventListener("resize", () => {
+    resetGame();
+  });
+
+  // Initialize slider displays from defaults
+  tileSizeInput.value = 45;
+  speedInput.value = 40;
+  chaosInput.value = 40;
+  settings.tileSize = nonLinearTileSize(Number(tileSizeInput.value));
+  settings.speedMood = nonLinearSpeed(Number(speedInput.value));
+  settings.chaos = nonLinearChaos(Number(chaosInput.value));
+  tileSizeValue.textContent = `${settings.tileSize}px`;
+  speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
+  chaosValue.textContent = settings.chaos.toFixed(2);
+  updateDerived();
 }
 
 function start() {
   initControls();
-  toggleSettings(true);
   buildGrid();
   createBalls();
   animationFrameId = requestAnimationFrame(render);

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Day / Nite Drift</title>
-  <meta name="description" content="A hypnotic, art-forward twist on Pong Wars. Pick a palette, tune the chaos, and watch the territories breathe.">
+  <meta name="description" content="A calmer Pong Wars loop made for second screens.">
   <meta name="theme-color" content="#0b3a67">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,107 +14,76 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="atmosphere"></div>
-  <header class="topbar">
-    <div class="brand">
-      <span class="orb"></span>
-      <div>
-        <div class="brand__title">Day / Nite Drift</div>
-        <div class="brand__subtitle">A slower, prettier territory duel</div>
+  <div class="bg"></div>
+  <main class="shell">
+    <div class="canvas-frame">
+      <canvas id="gameCanvas" width="720" height="720"></canvas>
+      <div class="score-bar">
+        <span class="score score--day" id="dayScoreLabel">Day 0</span>
+        <span class="score score--night" id="nightScoreLabel">Night 0</span>
+      </div>
+      <div class="float-controls">
+        <button id="playPauseBtn" class="chip">Pause</button>
+        <button id="resetBtn" class="chip">Reset</button>
+        <button id="configBtn" class="chip chip--accent" aria-label="Open settings">Settings</button>
       </div>
     </div>
-    <div class="topbar__actions">
-      <button id="playPauseBtn" class="btn ghost" aria-label="Play or pause">Pause</button>
-      <button id="resetBtn" class="btn ghost" aria-label="Reset">Reset</button>
-      <button id="configBtn" class="btn solid" aria-label="Open settings">Settings</button>
-    </div>
-  </header>
-
-  <main class="layout">
-    <section class="canvas-card">
-      <div class="canvas-meta">
-        <div class="pill">Hypnotic mode</div>
-        <div class="pill pill--accent" id="paceLabel">Pace: Drift</div>
-      </div>
-      <div class="canvas-wrap">
-        <canvas id="gameCanvas" width="720" height="720"></canvas>
-        <div class="score-bar">
-          <span class="score score--day" id="dayScoreLabel">Day 0</span>
-          <span class="score score--night" id="nightScoreLabel">Night 0</span>
-        </div>
-      </div>
-    </section>
-
-    <aside class="panel" id="configPanel" aria-label="Settings">
-      <div class="panel__header">
-        <div>
-          <p class="eyebrow">Palettes</p>
-          <h2>Paint the vibe</h2>
-        </div>
-        <button id="closeConfig" class="icon-btn" aria-label="Close settings">×</button>
-      </div>
-
-      <label class="field">
-        <span>Preset</span>
-        <select id="themeSelect"></select>
-      </label>
-
-      <div class="field grid">
-        <label>
-          <span>Day</span>
-          <input type="color" id="dayColorInput" value="#f7f2e9">
-        </label>
-        <label>
-          <span>Night</span>
-          <input type="color" id="nightColorInput" value="#0b3a67">
-        </label>
-      </div>
-
-      <div class="panel__section">
-        <p class="eyebrow">Simulation</p>
-        <label class="field slider-field">
-          <div>
-            <span>Tile size</span>
-            <small id="tileSizeValue">22px</small>
-          </div>
-          <input type="range" id="tileSizeInput" min="16" max="32" step="1" value="22">
-        </label>
-
-        <label class="field slider-field">
-          <div>
-            <span>Speed mood</span>
-            <small id="speedValue">1.00x</small>
-          </div>
-          <input type="range" id="speedInput" min="0.7" max="1.6" step="0.05" value="1">
-        </label>
-
-        <label class="field slider-field">
-          <div>
-            <span>Chaos / wobble</span>
-            <small id="chaosValue">0.14</small>
-          </div>
-          <input type="range" id="chaosInput" min="0" max="0.35" step="0.01" value="0.14">
-        </label>
-      </div>
-
-      <div class="panel__section">
-        <p class="eyebrow">Remix</p>
-        <div class="remix-row">
-          <button id="scatterBtn" class="btn ghost">Scatter start</button>
-          <button id="swapSidesBtn" class="btn ghost">Swap sides</button>
-        </div>
-      </div>
-    </aside>
   </main>
 
-  <footer class="footer">
-    <div>Made for zoning out. Original concept by Marko Denic · Inspired by Pong Wars.</div>
-    <div class="footer__links">
-      <a href="https://markodenic.tech" target="_blank" rel="noreferrer">markodenic.tech</a>
-      <a href="https://github.com/markodenic/dynamic-pong-wars" target="_blank" rel="noreferrer">Source</a>
-      <a href="https://github.com/vnglst/pong-wars" target="_blank" rel="noreferrer">Pong Wars</a>
+  <aside class="drawer" id="configPanel" aria-label="Settings">
+    <div class="drawer__header">
+      <div>
+        <p class="eyebrow">Tune</p>
+        <h2>Keep it interesting</h2>
+      </div>
+      <button id="closeConfig" class="icon-btn" aria-label="Close settings">×</button>
     </div>
-  </footer>
+
+    <label class="field">
+      <span>Preset</span>
+      <select id="themeSelect"></select>
+    </label>
+
+    <div class="field grid">
+      <label>
+        <span>Day</span>
+        <input type="color" id="dayColorInput" value="#f7f2e9">
+      </label>
+      <label>
+        <span>Night</span>
+        <input type="color" id="nightColorInput" value="#0b3a67">
+      </label>
+    </div>
+
+    <div class="field slider-field">
+      <div>
+        <span>Tile size</span>
+        <small id="tileSizeValue">22px</small>
+      </div>
+      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="45">
+    </div>
+
+    <div class="field slider-field">
+      <div>
+        <span>Speed mood</span>
+        <small id="speedValue">1.00x</small>
+      </div>
+      <input type="range" id="speedInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="field slider-field">
+      <div>
+        <span>Chaos / wobble</span>
+        <small id="chaosValue">0.14</small>
+      </div>
+      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="drawer__actions">
+      <button id="scatterBtn" class="chip">Scatter start</button>
+      <button id="swapSidesBtn" class="chip">Swap sides</button>
+    </div>
+  </aside>
 
   <script src="script.js" defer></script>
 </body>
