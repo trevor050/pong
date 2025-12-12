@@ -32,6 +32,11 @@ body {
   overflow: hidden;
 }
 
+body.cursor-hidden,
+body.cursor-hidden * {
+  cursor: none !important;
+}
+
 .bg {
   position: fixed;
   inset: 0;

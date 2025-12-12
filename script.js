@@ -34,6 +34,7 @@ const speedDialFill = document.querySelector("#speedDialFill");
 const speedDialThumb = document.querySelector("#speedDialThumb");
 const hideScoreToggle = document.querySelector("#hideScoreToggle");
 const autoHideUiToggle = document.querySelector("#autoHideUiToggle");
+const autoHideCursorToggle = document.querySelector("#autoHideCursorToggle");
 const revealHotspot = document.querySelector("#revealHotspot");
 const ballPicker = document.querySelector("#ballPicker");
 const ballSelected = document.querySelector("#ballSelected");
@@ -50,14 +51,13 @@ const scoreNightBar = scoreNotch.querySelector(".score-notch__night");
 const dragHandles = document.querySelectorAll(".corner-handle");
 
 const themeList = [
-  { key: "skyDrift", label: "Sky Drift", day: "#e8f5ff", night: "#0b1b2c", accent: "#6fd2ff" },
-  { key: "dayNNight", label: "Day N' Night", day: "#eaf6ff", night: "#071427", accent: "#ffd180" },
-  { key: "cosmos", label: "Cosmos", day: "#fff8e7", night: "#0a0a1a", accent: "#ffd166" },
-  { key: "neonCity", label: "Neon City", day: "#f8f0ff", night: "#0d0518", accent: "#ff6bff" },
-  { key: "seafoam", label: "Seafoam Calm", day: "#e9f8f2", night: "#0f2a2f", accent: "#7ce6c7" },
-  { key: "duskPeach", label: "Peach Dusk", day: "#fff0e6", night: "#2a1421", accent: "#ff9e9e" },
-  { key: "neonNoir", label: "Neon Noir", day: "#e9ecff", night: "#0b0d18", accent: "#8fd4ff" },
-  { key: "retroTerminal", label: "Retro Terminal", day: "#eeffee", night: "#001100", accent: "#33ff33" }
+  { key: "dayNNight", label: "Split Horizon", day: "#eaf6ff", night: "#071427", accent: "#ffd180" },
+  { key: "cosmos", label: "Stardust", day: "#fff8e7", night: "#0a0a1a", accent: "#ffd166" },
+  { key: "neonCity", label: "Neo Tokyo", day: "#f8f0ff", night: "#0d0518", accent: "#ff6bff" },
+  { key: "seafoam", label: "Seafoam", day: "#e9f8f2", night: "#0f2a2f", accent: "#7ce6c7" },
+  { key: "duskPeach", label: "Peach Pit", day: "#fff0e6", night: "#2a1421", accent: "#ff9e9e" },
+  { key: "neonNoir", label: "Midnight Chrome", day: "#e9ecff", night: "#0b0d18", accent: "#8fd4ff" },
+  { key: "retroTerminal", label: "Green Screen", day: "#eeffee", night: "#001100", accent: "#33ff33" }
 ];
 
 function getThemeByKey(key) {
@@ -67,7 +67,8 @@ function getThemeByKey(key) {
 const themeAliases = {
   aurora: "seafoam",
   citrusWave: "cosmos",
-  monoGlass: "neonNoir"
+  monoGlass: "neonNoir",
+  skyDrift: "dayNNight"
 };
 
 function normalizeThemeKey(key) {
@@ -79,15 +80,16 @@ function normalizeThemeKey(key) {
 }
 
 const defaultSettings = {
-  themeKey: "skyDrift",
-  tileSizeRaw: 35,
-  tileSize: 20,
-  speedMood: 1.2,
+  themeKey: "dayNNight",
+  tileSizeRaw: 55,
+  tileSize: 55,
+  speedMood: 3,
   chaosRaw: 40,
-  chaos: 0.14,
+  chaos: 0.27,
   ballStyle: "glow",
   hideScoreBar: false,
-  autoHideChrome: false
+  autoHideChrome: false,
+  autoHideCursor: false
 };
 
 const settings = { ...defaultSettings };
@@ -103,6 +105,7 @@ let isPlaying = true;
 let animationFrameId = null;
 let frameWidth = 720;
 let frameHeight = 720;
+let deviceScale = window.devicePixelRatio || 1;
 let resizeRaf = null;
 let pendingSize = null;
 let backgroundSeed = null;
@@ -110,6 +113,7 @@ let isImmersive = false;
 let isNativeFullscreen = false;
 let savedSize = null;
 let chromeHideTimeout = null;
+let cursorHideTimeout = null;
 let lastBgUpdate = 0;
 let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
 let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
@@ -221,6 +225,7 @@ function loadSettingsFromStorage() {
       ballStyle: normalizeBallStyle(saved.ballStyle ?? settings.ballStyle),
       hideScoreBar: saved.hideScoreBar ?? settings.hideScoreBar,
       autoHideChrome: saved.autoHideChrome ?? settings.autoHideChrome,
+      autoHideCursor: saved.autoHideCursor ?? settings.autoHideCursor,
       dayColor: saved.dayColor ?? settings.dayColor,
       nightColor: saved.nightColor ?? settings.nightColor,
       accentColor: saved.accentColor ?? settings.accentColor
@@ -242,6 +247,7 @@ function saveSettingsToStorage() {
         ballStyle: settings.ballStyle,
         hideScoreBar: settings.hideScoreBar,
         autoHideChrome: settings.autoHideChrome,
+        autoHideCursor: settings.autoHideCursor,
         dayColor: colors.day,
         nightColor: colors.night,
         accentColor: colors.accent
@@ -328,8 +334,8 @@ function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio, centro
 
 function nonLinearTileSize(raw) {
   const min = 14;
-  const max = 52;
-  const t = Math.pow(raw / 100, 1.7);
+  const max = 80;
+  const t = Math.pow(raw / 100, 0.8);
   return Math.round(min + t * (max - min));
 }
 
@@ -361,11 +367,13 @@ function updateBallRadius() {
 function updateDerived() {
   // Original uses MIN_SPEED = 5, MAX_SPEED = 10
   // speedMood acts as a multiplier from 0.2x to 20x
-  // At default speedMood = 1.2, we want roughly 5-10 like the original
+  // We also lightly scale speed when tiles get very small so big grids stay lively.
   const baseMin = 4;
   const baseMax = 9;
-  minSpeed = baseMin * settings.speedMood;
-  maxSpeed = baseMax * settings.speedMood;
+  const baselineTile = 55;
+  const tileScale = clamp(Math.sqrt(baselineTile / settings.tileSize), 1, 1.8);
+  minSpeed = baseMin * settings.speedMood * tileScale;
+  maxSpeed = baseMax * settings.speedMood * tileScale;
 }
 
 function setSpeedMood(value) {
@@ -559,22 +567,29 @@ function rebuildGrid(preserveOwnership = true) {
   const oldOwnership = preserveOwnership ? ownership.slice() : null;
   const oldW = gridWidth || 1;
   const oldH = gridHeight || 1;
-  const oldCanvasW = canvas.width || frameWidth;
-  const oldCanvasH = canvas.height || frameHeight;
+  const oldScale = deviceScale || 1;
+  const oldCanvasW = (canvas.width / oldScale) || frameWidth;
+  const oldCanvasH = (canvas.height / oldScale) || frameHeight;
 
   gridWidth = Math.max(8, Math.ceil(frameWidth / settings.tileSize));
   gridHeight = Math.max(8, Math.ceil(frameHeight / settings.tileSize));
-  canvas.width = gridWidth * settings.tileSize;
-  canvas.height = gridHeight * settings.tileSize;
-  frameWidth = canvas.width;
-  frameHeight = canvas.height;
+  const logicalW = gridWidth * settings.tileSize;
+  const logicalH = gridHeight * settings.tileSize;
+  deviceScale = window.devicePixelRatio || 1;
+  canvas.width = logicalW * deviceScale;
+  canvas.height = logicalH * deviceScale;
+  canvas.style.width = `${logicalW}px`;
+  canvas.style.height = `${logicalH}px`;
+  ctx.setTransform(deviceScale, 0, 0, deviceScale, 0, 0);
+  frameWidth = logicalW;
+  frameHeight = logicalH;
   canvasFrame.style.width = `${frameWidth}px`;
   canvasFrame.style.height = `${frameHeight}px`;
 
   ownership = remapOwnership(oldOwnership, oldW, oldH, gridWidth, gridHeight);
 
-  const scaleX = canvas.width / oldCanvasW;
-  const scaleY = canvas.height / oldCanvasH;
+  const scaleX = logicalW / oldCanvasW;
+  const scaleY = logicalH / oldCanvasH;
   if (balls.length === 0) {
     createBalls();
   } else {
@@ -587,6 +602,7 @@ function rebuildGrid(preserveOwnership = true) {
       history: (b.history || []).map((p) => ({ x: p.x * scaleX, y: p.y * scaleY }))
     }));
   }
+  renderIfPaused();
 }
 
 function createBalls() {
@@ -595,8 +611,8 @@ function createBalls() {
   const speed = (minSpeed + maxSpeed) / 2;
   const diagSpeed = speed * 0.707; // sqrt(2)/2 for 45 degree angle
   balls = [
-    { owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: diagSpeed, vy: -diagSpeed, history: [] },
-    { owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: -diagSpeed, vy: diagSpeed, history: [] }
+    { owner: 0, x: frameWidth * 0.25, y: frameHeight * 0.5, vx: diagSpeed, vy: -diagSpeed, history: [] },
+    { owner: 1, x: frameWidth * 0.75, y: frameHeight * 0.5, vx: -diagSpeed, vy: diagSpeed, history: [] }
   ];
 }
 
@@ -706,6 +722,24 @@ function applyChromeAutoHideState(enabled) {
   } else if (!configPanel.classList.contains("open")) {
     hideChromeAfterDelay(500);
   }
+}
+
+function hideCursorAfterDelay(delay = 1200) {
+  if (!settings.autoHideCursor || configPanel.classList.contains("open")) return;
+  clearTimeout(cursorHideTimeout);
+  cursorHideTimeout = setTimeout(() => {
+    if (settings.autoHideCursor && !configPanel.classList.contains("open")) {
+      document.body.classList.add("cursor-hidden");
+    }
+  }, delay);
+}
+
+function applyCursorAutoHideState(enabled) {
+  settings.autoHideCursor = enabled;
+  if (autoHideCursorToggle) autoHideCursorToggle.checked = enabled;
+  document.body.classList.remove("cursor-hidden");
+  clearTimeout(cursorHideTimeout);
+  if (enabled) hideCursorAfterDelay(1200);
 }
 
 function handleChromePeek(e) {
@@ -977,15 +1011,12 @@ function paintBall(ctxTarget, ball, palette, style, radius) {
     ctxTarget.fill();
 
   } else if (style === "emoji") {
-    ctxTarget.font = `${radius * 2.2}px "Segoe UI Emoji", "Apple Color Emoji", sans - serif`;
+    ctxTarget.font = `${radius * 3}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
     ctxTarget.textAlign = "center";
     ctxTarget.textBaseline = "middle";
-    const emojis = ["🌗", "🌖", "🌑", "🪐", "✨", "💫", "☄️", "🌟"];
-    // Deterministic emoji based on owner/palette to avoid flickering, or just random?
-    // Random here would flicker every frame which is bad.
-    // Use ball owner to pick.
+    // Deterministic emoji based on owner to avoid flicker.
     const e = ball.owner === 0 ? "☀️" : "🌙";
-    ctxTarget.fillText(e, 0, radius * 0.2); // slight offset for baseline
+    ctxTarget.fillText(e, 0, radius * 0.1);
   } else {
     const contrastColor = palette.isLight ? colors.night : "#ffffff";
     const glow = ctxTarget.createRadialGradient(0, 0, radius * 0.3, 0, 0, radius * 1.35);
@@ -1047,7 +1078,8 @@ function detectCollision(ball) {
 
       // Bounce off the axis with greater displacement (like original)
       // Add slight randomness to prevent infinite stable loops
-      const jitter = (Math.random() - 0.5) * 0.5;
+      const jitterStrength = 0.4 + settings.chaos * 1.2;
+      const jitter = (Math.random() - 0.5) * jitterStrength;
       if (Math.abs(dx) > Math.abs(dy)) {
         ball.vx = -ball.vx;
         ball.vy += jitter;
@@ -1061,13 +1093,13 @@ function detectCollision(ball) {
 
 function checkBoundaries(ball) {
   // Simple boundary checks like the original - just flip velocity
-  if (ball.x < ballRadius || ball.x > canvas.width - ballRadius) {
+  if (ball.x < ballRadius || ball.x > frameWidth - ballRadius) {
     ball.vx = -ball.vx;
-    ball.x = clamp(ball.x, ballRadius, canvas.width - ballRadius);
+    ball.x = clamp(ball.x, ballRadius, frameWidth - ballRadius);
   }
-  if (ball.y < ballRadius || ball.y > canvas.height - ballRadius) {
+  if (ball.y < ballRadius || ball.y > frameHeight - ballRadius) {
     ball.vy = -ball.vy;
-    ball.y = clamp(ball.y, ballRadius, canvas.height - ballRadius);
+    ball.y = clamp(ball.y, ballRadius, frameHeight - ballRadius);
   }
 }
 
@@ -1080,8 +1112,8 @@ function updateBall(ball) {
   if (ball.history.length > maxHistory) ball.history.pop();
 
   // Simple acceleration like the original (ACCELERATION = 0.1)
-  // Scale by chaos setting: base 0.1, up to 0.4 at max chaos
-  const acceleration = 0.1 + settings.chaos * 0.3;
+  // Chaos boosts random drift and collision jitter for more noticeable effect.
+  const acceleration = 0.08 + settings.chaos * 0.8;
   ball.vx += (Math.random() - 0.5) * acceleration;
   ball.vy += (Math.random() - 0.5) * acceleration;
 
@@ -1137,7 +1169,7 @@ function updateScoreUI(dayScore, nightScore, topHalfRatio, centroid) {
 }
 
 function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, frameWidth, frameHeight);
   let dayScore = 0;
   let nightScore = 0;
   let topDay = 0;
@@ -1146,7 +1178,7 @@ function render() {
   let dayMassY = 0;
   const tileSize = settings.tileSize;
   const halfTile = tileSize * 0.5;
-  const halfHeight = canvas.height / 2;
+  const halfHeight = frameHeight / 2;
   const dayFill = colors.day;
   const nightFill = colors.night;
   let lastOwner = -1;
@@ -1197,7 +1229,7 @@ function render() {
   const topHalfRatio = topTotal ? topDay / topTotal : 0.5;
   const centroid =
     dayScore > 0
-      ? { x: (dayMassX / dayScore) / canvas.width, y: (dayMassY / dayScore) / canvas.height }
+      ? { x: (dayMassX / dayScore) / frameWidth, y: (dayMassY / dayScore) / frameHeight }
       : { x: 0.5, y: 0.5 };
   updateScoreUI(dayScore, nightScore, topHalfRatio, centroid);
 
@@ -1219,8 +1251,8 @@ function swapSides() {
     {
       ...first,
       owner: 1,
-      x: canvas.width * 0.75,
-      y: canvas.height * 0.5,
+      x: frameWidth * 0.75,
+      y: frameHeight * 0.5,
       vx: -Math.abs(first.vx),
       vy: first.vy,
       history: []
@@ -1228,8 +1260,8 @@ function swapSides() {
     {
       ...second,
       owner: 0,
-      x: canvas.width * 0.25,
-      y: canvas.height * 0.5,
+      x: frameWidth * 0.25,
+      y: frameHeight * 0.5,
       vx: Math.abs(second.vx),
       vy: second.vy,
       history: []
@@ -1461,6 +1493,7 @@ function resetSettingsToDefault() {
   rebuildGrid(true);
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
+  applyCursorAutoHideState(settings.autoHideCursor);
   saveSettingsToStorage();
   updateBallPickerPreviews();
   updateDynamicBackground();
@@ -1528,6 +1561,7 @@ function initControls() {
     settings.tileSize = nonLinearTileSize(settings.tileSizeRaw);
     tileSizeValue.textContent = `${settings.tileSize} px`;
     updateBallRadius();
+    updateDerived();
     rebuildGrid(true);
     saveSettingsToStorage();
   });
@@ -1585,12 +1619,19 @@ function initControls() {
     saveSettingsToStorage();
   });
 
+  if (autoHideCursorToggle) {
+    autoHideCursorToggle.addEventListener("change", (e) => {
+      applyCursorAutoHideState(e.target.checked);
+      saveSettingsToStorage();
+    });
+  }
+
   drawerResetSettings.addEventListener("click", resetSettingsToDefault);
 
   playPauseBtn.addEventListener("click", togglePlayPause);
   resetBtn.addEventListener("click", () => {
     resetGame();
-    if (!isPlaying) togglePlayPause();
+    renderIfPaused();
   });
   if (fullscreenHint) {
     fullscreenHint.addEventListener("click", () => toggleFullscreen(true));
@@ -1632,7 +1673,19 @@ function initControls() {
     }
   });
 
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      renderIfPaused();
+      updateDynamicBackground();
+    }
+  });
+
   window.addEventListener("mousemove", handleChromePeek);
+  window.addEventListener("mousemove", () => {
+    if (!settings.autoHideCursor) return;
+    document.body.classList.remove("cursor-hidden");
+    hideCursorAfterDelay(1200);
+  });
   chromeControls.addEventListener("mouseenter", () => {
     if (!settings.autoHideChrome) return;
     clearTimeout(chromeHideTimeout);
@@ -1653,6 +1706,7 @@ function initControls() {
   autoHideUiToggle.checked = settings.autoHideChrome;
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
+  applyCursorAutoHideState(settings.autoHideCursor);
   syncPlayPauseButtons();
   updateFullscreenHint();
   if (settings.autoHideChrome) {
