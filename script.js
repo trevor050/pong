@@ -118,6 +118,8 @@ let chromeHideTimeout = null;
 let cursorHideTimeout = null;
 let cinematicAssistOwner = null;
 let cinematicAssistStrength = 0;
+let cinematicAssistFrames = 0;
+let cinematicLastDominance = 0.5;
 let lastBgUpdate = 0;
 let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
 let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
@@ -754,6 +756,8 @@ function applyCinematicModeState(enabled) {
   if (!enabled) {
     cinematicAssistOwner = null;
     cinematicAssistStrength = 0;
+    cinematicAssistFrames = 0;
+    cinematicLastDominance = 0.5;
   }
 }
 
@@ -1157,16 +1161,35 @@ function updateBall(ball) {
   }
 
   if (settings.cinematicMode && cinematicAssistStrength > 0 && cinematicAssistOwner === ball.owner) {
-    const boost = 1 + cinematicAssistStrength * 0.06;
+    const strength = cinematicAssistStrength;
+
+    const boost = 1 + strength * 0.08;
     ball.vx *= boost;
     ball.vy *= boost;
-    const nudge = cinematicAssistStrength * (0.06 + settings.chaos * 0.08);
+
+    const nudge = strength * (0.05 + settings.chaos * 0.07);
     ball.vx += (Math.random() - 0.5) * nudge;
     ball.vy += (Math.random() - 0.5) * nudge;
 
-    const assistedMax = maxSpeed * (1 + cinematicAssistStrength * 0.12);
-    const assistedMin = minSpeed * (1 + cinematicAssistStrength * 0.04);
-    const newSpeed = Math.hypot(ball.vx, ball.vy) || 0.001;
+    // Bias a bit toward horizontal movement to break vertical traps.
+    const horizNudge = (Math.random() - 0.5) * strength * (0.12 + settings.chaos * 0.16);
+    ball.vx += horizNudge;
+
+    let newSpeed = Math.hypot(ball.vx, ball.vy) || 0.001;
+    const horizRatio = Math.abs(ball.vx) / newSpeed;
+    const targetHorizRatio = 0.18 + strength * 0.22;
+    if (horizRatio < targetHorizRatio) {
+      const signX = Math.sign(ball.vx) || (Math.random() < 0.5 ? -1 : 1);
+      const desiredVx = signX * newSpeed * targetHorizRatio;
+      const remainingSq = Math.max(newSpeed * newSpeed - desiredVx * desiredVx, minAxisSpeed * minAxisSpeed);
+      const signY = Math.sign(ball.vy) || (Math.random() < 0.5 ? -1 : 1);
+      ball.vx = desiredVx;
+      ball.vy = signY * Math.sqrt(remainingSq);
+      newSpeed = Math.hypot(ball.vx, ball.vy) || newSpeed;
+    }
+
+    const assistedMax = maxSpeed * (1 + strength * 0.18);
+    const assistedMin = minSpeed * (1 + strength * 0.06);
     if (newSpeed > assistedMax) {
       const scale = assistedMax / newSpeed;
       ball.vx *= scale;
@@ -1269,19 +1292,37 @@ function render() {
       targetStrength = clamp((dominance - threshold) / (1 - threshold), 0, 1);
       targetOwner = dayRatio > 0.5 ? 1 : 0;
     }
-    if (targetStrength > 0) {
-      cinematicAssistStrength = cinematicAssistStrength * 0.9 + targetStrength * 0.1;
-      cinematicAssistOwner = targetOwner;
+    if (targetStrength > 0 && targetOwner !== null) {
+      if (cinematicAssistOwner !== targetOwner) {
+        cinematicAssistOwner = targetOwner;
+        cinematicAssistFrames = 0;
+        cinematicLastDominance = dominance;
+      }
+
+      if (dominance < cinematicLastDominance - 0.002) {
+        cinematicAssistFrames = Math.max(0, cinematicAssistFrames - 4);
+      } else {
+        cinematicAssistFrames += 1;
+      }
+      cinematicLastDominance = dominance;
+
+      const timeRamp = clamp(cinematicAssistFrames / (60 * 8), 0, 1);
+      const boostedTarget = targetStrength + timeRamp * 0.9;
+      cinematicAssistStrength = clamp(cinematicAssistStrength * 0.9 + boostedTarget * 0.1, 0, 1.6);
     } else {
+      cinematicAssistFrames = 0;
+      cinematicLastDominance = dominance;
       cinematicAssistStrength *= 0.9;
       if (cinematicAssistStrength < 0.001) {
         cinematicAssistStrength = 0;
         cinematicAssistOwner = null;
       }
     }
-  } else if (cinematicAssistStrength !== 0) {
+  } else if (cinematicAssistStrength !== 0 || cinematicAssistFrames !== 0) {
     cinematicAssistStrength = 0;
     cinematicAssistOwner = null;
+    cinematicAssistFrames = 0;
+    cinematicLastDominance = 0.5;
   }
 
   balls.forEach((ball) => {

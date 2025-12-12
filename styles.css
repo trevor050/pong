@@ -885,6 +885,20 @@ select {
   display: block;
 }
 
+.toggle__badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(111, 210, 255, 0.95);
+  background: rgba(111, 210, 255, 0.12);
+  border: 1px solid rgba(111, 210, 255, 0.45);
+  vertical-align: middle;
+}
+
 .info-icon {
   display: inline-flex;
   align-items: center;
