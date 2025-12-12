@@ -1,5 +1,7 @@
 # day / nite drift
 
+**play it here:** https://pong-screensaver-5veb71d71-trevor050s-projects.vercel.app
+
 this is a fork of marko denic's **dynamic pong wars**:  
 https://github.com/markodenic/dynamic-pong-wars  
 which itself is based on koen van gilst's original pong wars thing.
