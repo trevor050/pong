@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day / Nite Drift</title>
+  <meta name="description" content="A calmer Pong Wars loop made for second screens.">
+  <meta name="theme-color" content="#0b3a67">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="chrome-controls" id="chromeControls">
+    <button id="playPauseBtn" class="glass-icon" data-state="playing" aria-label="Pause" title="Pause">
+      <svg class="icon-svg icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5.5v13l11-6.5L7 5.5Z" /></svg>
+      <svg class="icon-svg icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5.5h4v13H7zm6 0h4v13h-4z" /></svg>
+    </button>
+    <button id="resetBtn" class="glass-icon" aria-label="Reset simulation" title="Reset simulation">
+      <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+    </button>
+    <button id="configBtn" class="glass-icon" aria-label="Open settings" title="Settings">
+      <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+    </button>
+  </div>
+  <main class="shell">
+    <div class="canvas-frame" id="canvasFrame">
+      <canvas id="gameCanvas" width="720" height="720"></canvas>
+
+      <div class="score-notch" id="scoreNotch">
+        <div class="score-notch__bar">
+          <div class="score-notch__day"></div>
+          <div class="score-notch__night"></div>
+        </div>
+        <div class="score-notch__labels">
+          <span class="score-pair">
+            <span class="pill pill--day" aria-hidden="true"></span>
+            <span class="score" id="dayScoreLabel">Day 0</span>
+          </span>
+          <span class="score-pair">
+            <span class="pill pill--night" aria-hidden="true"></span>
+            <span class="score" id="nightScoreLabel">Night 0</span>
+          </span>
+        </div>
+      </div>
+      <div class="drag-handle corner-handle corner-handle--tl" data-corner="tl"></div>
+      <div class="drag-handle corner-handle corner-handle--tr" data-corner="tr"></div>
+      <div class="drag-handle corner-handle corner-handle--bl" data-corner="bl"></div>
+      <div class="drag-handle corner-handle corner-handle--br" data-corner="br"></div>
+    </div>
+  </main>
+
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
+  <aside class="drawer" id="configPanel" aria-label="Settings">
+    <div class="drawer__header">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h2>Dial it in</h2>
+      </div>
+      <button id="closeConfig" class="icon-btn" aria-label="Close settings" title="Close">×</button>
+    </div>
+
+    <div class="drawer__quick">
+      <button id="drawerPlayPause" class="chip">Pause</button>
+      <button id="drawerReset" class="chip">Reset</button>
+      <button id="drawerFullscreen" class="chip">Fullscreen</button>
+    </div>
+
+    <label class="field">
+      <span>Preset</span>
+      <select id="themeSelect"></select>
+    </label>
+
+    <div class="field grid">
+      <label>
+        <span>Day</span>
+        <input type="color" id="dayColorInput" value="#e4f4ff">
+      </label>
+      <label>
+        <span>Night</span>
+        <input type="color" id="nightColorInput" value="#0b1e33">
+      </label>
+    </div>
+
+    <div class="field slider-field" title="Tile size / density">
+      <div>
+        <span>Tile size</span>
+        <small id="tileSizeValue">22px</small>
+      </div>
+      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="45">
+    </div>
+
+    <div class="field slider-field" title="Overall speed mood (lofi → push)">
+      <div>
+        <span>Speed mood</span>
+        <small id="speedValue">1.00x</small>
+      </div>
+      <input type="range" id="speedInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="field slider-field" title="Chaos / wobble: more randomness to motion">
+      <div>
+        <span>Chaos / wobble</span>
+        <small id="chaosValue">0.14</small>
+      </div>
+      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40">
+    </div>
+
+        <div class="field">
+      <span>Ball style</span>
+      <select id="ballStyleSelect">
+        <option value="ring">Neon Glow</option>
+        <option value="solid">Solid Fill</option>
+        <option value="design">Geometric</option>
+        <option value="artsy">Motion Trail</option>
+      </select>
+    </div>
+
+    <div class="drawer__actions">
+      <button id="scatterBtn" class="chip">Scatter start</button>
+      <button id="swapSidesBtn" class="chip">Swap sides</button>
+    </div>
+  </aside>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day / Nite Drift</title>
+  <meta name="description" content="A calmer Pong Wars loop made for second screens.">
+  <meta name="theme-color" content="#0b3a67">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="chrome-controls">
+    <button id="playPauseBtn" class="icon-btn glass-btn" title="Play / Pause">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="4" height="16"></rect>
+        <rect x="14" y="4" width="4" height="16"></rect>
+      </svg>
+    </button>
+    <button id="resetBtn" class="icon-btn glass-btn" title="Reset simulation">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+        <path d="M3 3v5h5"></path>
+      </svg>
+    </button>
+    <button id="configBtn" class="icon-btn glass-btn" aria-label="Open settings" title="Settings">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </div>
+  <main class="shell">
+    <div class="canvas-frame" id="canvasFrame">
+      <canvas id="gameCanvas" width="720" height="720"></canvas>
+      <div class="score-notch" id="scoreNotch">
+        <div class="score-notch__bar">
+          <div class="score-notch__day"></div>
+          <div class="score-notch__night"></div>
+        </div>
+        <div class="score-notch__labels">
+          <span class="icon" title="Day territory">☀️</span><span class="score" id="dayScoreLabel">Day 0</span>
+          <span class="icon" title="Night territory">🌙</span><span class="score" id="nightScoreLabel">Night 0</span>
+        </div>
+      </div>
+      <div class="drag-handle drag-handle--top" data-edge="top"></div>
+      <div class="drag-handle drag-handle--bottom" data-edge="bottom"></div>
+      <div class="drag-handle drag-handle--left" data-edge="left"></div>
+      <div class="drag-handle drag-handle--right" data-edge="right"></div>
+    </div>
+  </main>
+
+  <aside class="drawer" id="configPanel" aria-label="Settings">
+    <div class="drawer__header">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h2>Dial it in</h2>
+      </div>
+      <button id="closeConfig" class="icon-btn" aria-label="Close settings" title="Close">×</button>
+    </div>
+
+    <label class="field">
+      <span>Preset</span>
+      <select id="themeSelect"></select>
+    </label>
+
+    <div class="field grid">
+      <label>
+        <span>Day</span>
+        <input type="color" id="dayColorInput" value="#f7f2e9">
+      </label>
+      <label>
+        <span>Night</span>
+        <input type="color" id="nightColorInput" value="#0b3a67">
+      </label>
+    </div>
+
+    <div class="field slider-field" title="Tile size / density">
+      <div>
+        <span>Tile size</span>
+        <small id="tileSizeValue">22px</small>
+      </div>
+      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="45">
+    </div>
+
+    <div class="field slider-field" title="Overall speed mood (lofi → push)">
+      <div>
+        <span>Speed mood</span>
+        <small id="speedValue">1.00x</small>
+      </div>
+      <input type="range" id="speedInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="field slider-field" title="Chaos / wobble: more randomness to motion">
+      <div>
+        <span>Chaos / wobble</span>
+        <small id="chaosValue">0.14</small>
+      </div>
+      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="drawer__actions">
+      <button id="scatterBtn" class="chip">Scatter start</button>
+      <button id="swapSidesBtn" class="chip">Swap sides</button>
+    </div>
+  </aside>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

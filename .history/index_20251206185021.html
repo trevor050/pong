@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Day / Nite Drift</title>
+  <meta name="description" content="A calmer Pong Wars loop made for second screens.">
+  <meta name="theme-color" content="#0b3a67">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="chrome-controls">
+    <button id="playPauseBtn" class="icon-control" title="Play / Pause" aria-label="Pause">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>
+        <rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+    <button id="resetBtn" class="icon-control" title="Reset simulation" aria-label="Reset">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 8C13 10.7614 10.7614 13 8 13C5.23858 13 3 10.7614 3 8C3 5.23858 5.23858 3 8 3C9.8638 3 11.4299 4.10896 12.1999 5.7M12.1999 5.7V3M12.1999 5.7H9.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <button id="configBtn" class="icon-control" aria-label="Open settings" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 10C9.10457 10 10 9.10457 10 8C10 6.89543 9.10457 6 8 6C6.89543 6 6 6.89543 6 8C6 9.10457 6.89543 10 8 10Z" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13.5 8C13.5 8.35 13.48 8.69 13.44 9.02L14.62 9.9C14.72 9.98 14.75 10.12 14.69 10.23L13.57 12.27C13.51 12.38 13.37 12.42 13.26 12.38L11.89 11.83C11.6 12.05 11.29 12.24 10.96 12.39L10.76 13.87C10.74 13.99 10.64 14.08 10.52 14.08H8.28C8.16 14.08 8.06 13.99 8.04 13.87L7.84 12.39C7.51 12.24 7.2 12.05 6.91 11.83L5.54 12.38C5.43 12.42 5.29 12.38 5.23 12.27L4.11 10.23C4.05 10.12 4.08 9.98 4.18 9.9L5.36 9.02C5.32 8.69 5.3 8.35 5.3 8C5.3 7.65 5.32 7.31 5.36 6.98L4.18 6.1C4.08 6.02 4.05 5.88 4.11 5.77L5.23 3.73C5.29 3.62 5.43 3.58 5.54 3.62L6.91 4.17C7.2 3.95 7.51 3.76 7.84 3.61L8.04 2.13C8.06 2.01 8.16 1.92 8.28 1.92H10.52C10.64 1.92 10.74 2.01 10.76 2.13L10.96 3.61C11.29 3.76 11.6 3.95 11.89 4.17L13.26 3.62C13.37 3.58 13.51 3.62 13.57 3.73L14.69 5.77C14.75 5.88 14.72 6.02 14.62 6.1L13.44 6.98C13.48 7.31 13.5 7.65 13.5 8Z" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+    </button>
+  </div>
+  <main class="shell">
+    <div class="canvas-frame" id="canvasFrame">
+      <canvas id="gameCanvas" width="720" height="720"></canvas>
+      <div class="score-notch" id="scoreNotch">
+        <div class="score-notch__bar">
+          <div class="score-notch__day"></div>
+          <div class="score-notch__night"></div>
+        </div>
+        <div class="score-notch__labels">
+          <span class="score" id="dayScoreLabel">Day 0</span>
+          <span class="score" id="nightScoreLabel">Night 0</span>
+        </div>
+      </div>
+      <div class="drag-handle drag-handle--top" data-edge="top"></div>
+      <div class="drag-handle drag-handle--bottom" data-edge="bottom"></div>
+      <div class="drag-handle drag-handle--left" data-edge="left"></div>
+      <div class="drag-handle drag-handle--right" data-edge="right"></div>
+    </div>
+  </main>
+
+  <aside class="drawer" id="configPanel" aria-label="Settings">
+    <div class="drawer__header">
+      <div>
+        <p class="eyebrow">Settings</p>
+        <h2>Dial it in</h2>
+      </div>
+      <button id="closeConfig" class="icon-btn" aria-label="Close settings" title="Close">×</button>
+    </div>
+
+    <label class="field">
+      <span>Preset</span>
+      <select id="themeSelect"></select>
+    </label>
+
+    <div class="field-spacer"></div>
+
+    <div class="field grid">
+      <label>
+        <span>Day</span>
+        <input type="color" id="dayColorInput" value="#f7f2e9">
+      </label>
+      <label>
+        <span>Night</span>
+        <input type="color" id="nightColorInput" value="#0b3a67">
+      </label>
+    </div>
+
+    <label class="field">
+      <span>Ball style</span>
+      <select id="ballStyleSelect">
+        <option value="ring">Ring</option>
+        <option value="solid">Solid circle</option>
+      </select>
+    </label>
+
+    <div class="field slider-field" title="Tile size / density">
+      <div>
+        <span>Tile size</span>
+        <small id="tileSizeValue">22px</small>
+      </div>
+      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="45">
+    </div>
+
+    <div class="field slider-field" title="Overall speed mood (lofi → push)">
+      <div>
+        <span>Speed mood</span>
+        <small id="speedValue">1.00x</small>
+      </div>
+      <input type="range" id="speedInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="field slider-field" title="Chaos / wobble: more randomness to motion">
+      <div>
+        <span>Chaos / wobble</span>
+        <small id="chaosValue">0.14</small>
+      </div>
+      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40">
+    </div>
+
+    <div class="drawer__actions">
+      <button id="scatterBtn" class="chip">Scatter start</button>
+      <button id="swapSidesBtn" class="chip">Swap sides</button>
+    </div>
+  </aside>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

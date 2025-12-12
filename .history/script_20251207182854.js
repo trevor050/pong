@@ -51,31 +51,22 @@ const dragHandles = document.querySelectorAll(".corner-handle");
 
 const themeList = [
   { key: "skyDrift", label: "Sky Drift", day: "#e8f5ff", night: "#0b1b2c", accent: "#6fd2ff" },
-  { key: "dayNNight", label: "Day N' Night", day: "#eaf6ff", night: "#071427", accent: "#ffd180" },
-  { key: "cosmos", label: "Cosmos", day: "#fff8e7", night: "#0a0a1a", accent: "#ffd166" },
-  { key: "neonCity", label: "Neon City", day: "#f8f0ff", night: "#0d0518", accent: "#ff6bff" },
   { key: "seafoam", label: "Seafoam Calm", day: "#e9f8f2", night: "#0f2a2f", accent: "#7ce6c7" },
   { key: "duskPeach", label: "Peach Dusk", day: "#fff0e6", night: "#2a1421", accent: "#ff9e9e" },
   { key: "neonNoir", label: "Neon Noir", day: "#e9ecff", night: "#0b0d18", accent: "#8fd4ff" },
-  { key: "retroTerminal", label: "Retro Terminal", day: "#eeffee", night: "#001100", accent: "#33ff33" }
+  { key: "forestMist", label: "Forest Mist", day: "#e5f5e6", night: "#0f2418", accent: "#7de68a" },
+  { key: "sunBloom", label: "Sun Bloom", day: "#f9ebff", night: "#1f0e2a", accent: "#ff8dd6" },
+  { key: "monoGlass", label: "Glass Mono", day: "#f1f1f1", night: "#101010", accent: "#9bd8ff" },
+  { key: "citrusWave", label: "Citrus Wave", day: "#f5ffe6", night: "#1a2414", accent: "#ffd166" },
+  { key: "starfield", label: "Starfield", day: "#d8e6ff", night: "#040714", accent: "#8ae2ff" },
+  { key: "auroraSoft", label: "Aurora Soft", day: "#e4f4ff", night: "#0b1e33", accent: "#7de4ff" },
+  { key: "midnightCity", label: "Midnight City", day: "#e0f7fa", night: "#0a0e17", accent: "#00e5ff" },
+  { key: "candyPop", label: "Candy Pop", day: "#fff0f5", night: "#2a0a18", accent: "#ff69b4" },
+  { key: "retroWave", label: "Retro Wave", day: "#ffecd1", night: "#240046", accent: "#ff9e00" }
 ];
 
 function getThemeByKey(key) {
   return themeList.find((t) => t.key === key) || themeList[0];
-}
-
-const themeAliases = {
-  aurora: "seafoam",
-  citrusWave: "cosmos",
-  monoGlass: "neonNoir"
-};
-
-function normalizeThemeKey(key) {
-  if (!key) return themeList[0].key;
-  if (key === "custom") return "custom";
-  const aliased = themeAliases[key];
-  if (aliased) return aliased;
-  return themeList.some((t) => t.key === key) ? key : themeList[0].key;
 }
 
 const defaultSettings = {
@@ -92,6 +83,7 @@ const defaultSettings = {
 
 const settings = { ...defaultSettings };
 
+let grid = [];
 let ownership = [];
 let balls = [];
 let gridWidth = 0;
@@ -110,10 +102,6 @@ let isImmersive = false;
 let isNativeFullscreen = false;
 let savedSize = null;
 let chromeHideTimeout = null;
-let lastBgUpdate = 0;
-let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
-let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
-let lastScoreUpdate = 0;
 
 const baseTheme = getThemeByKey(settings.themeKey);
 defaultSettings.dayColor = defaultSettings.dayColor || baseTheme.day;
@@ -135,16 +123,15 @@ const STORAGE_KEY = "daynite-drift-settings";
 
 const ballStyles = [
   { key: "glow", label: "Neon Glow", preview: ["#6fd2ff", "#ffffff", "#0b1e33"] },
-  { key: "halo", label: "Orbital Ring", preview: ["#7de4ff", "#ffffff", "#102235"] },
+  { key: "halo", label: "Halo Bloom", preview: ["#7de4ff", "#ffffff", "#102235"] },
   { key: "fill", label: "Soft Core", preview: ["#f2f2f2", "#6fd2ff", "#0b1e33"] },
   { key: "grid", label: "Grid Lines", preview: ["#ffffff", "#6fd2ff", "#0b1e33"] },
   { key: "trail", label: "Ghost Trail", preview: ["#dff5ff", "#6fd2ff", "#08121f"] },
   { key: "comet", label: "Comet Tail", preview: ["#ffffff", "#7de4ff", "#0b0d18"] },
   { key: "spark", label: "Sparkburst", preview: ["#fff7e6", "#ffd166", "#0b1e33"] },
-  { key: "glitch", label: "Data Glitch", preview: ["#00ff00", "#ff00ff", "#000000"] },
-  { key: "pixel", label: "8-Bit Block", preview: ["#ffffff", "#cccccc", "#000000"] },
-  { key: "bubble", label: "Soap Bubble", preview: ["#ffffff", "#e0e0e0", "#888888"] },
-  { key: "emoji", label: "Mood Emojis", preview: ["#ffd700", "#ffffff", "#000000"] }
+  { key: "pixel", label: "8-Bit", preview: ["#ffffff", "#6fd2ff", "#0b1e33"] },
+  { key: "shatter", label: "Shatter", preview: ["#ffffff", "#7de4ff", "#0b0d18"] },
+  { key: "bubble", label: "Bubble", preview: ["#e4f4ff", "#7de4ff", "#0b1e33"] }
 ];
 
 const ballAliases = { ring: "glow", solid: "fill", design: "grid", artsy: "trail" };
@@ -156,8 +143,6 @@ function clamp(val, min, max) {
 function normalizeBallStyle(key) {
   return ballAliases[key] || key;
 }
-
-let currentBallStyle = normalizeBallStyle(settings.ballStyle);
 
 function hexToRgb(hex) {
   const parsed = hex.replace("#", "");
@@ -202,7 +187,6 @@ function hydrateSettings() {
   settings.tileSize = nonLinearTileSize(settings.tileSizeRaw);
   settings.chaos = nonLinearChaos(settings.chaosRaw);
   settings.speedMood = clamp(Number(settings.speedMood) || defaultSettings.speedMood, SPEED_MIN, SPEED_MAX);
-  currentBallStyle = normalizeBallStyle(settings.ballStyle);
   colors.day = settings.dayColor;
   colors.night = settings.nightColor;
   colors.accent = settings.accentColor;
@@ -214,7 +198,7 @@ function loadSettingsFromStorage() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
     if (!saved) return;
     Object.assign(settings, {
-      themeKey: normalizeThemeKey(saved.themeKey ?? settings.themeKey),
+      themeKey: saved.themeKey ?? settings.themeKey,
       tileSizeRaw: saved.tileSizeRaw ?? settings.tileSizeRaw,
       speedMood: saved.speedMood ?? settings.speedMood,
       chaosRaw: saved.chaosRaw ?? settings.chaosRaw,
@@ -271,12 +255,6 @@ function updateCssPalette() {
   root.style.setProperty("--day", colors.day);
   root.style.setProperty("--night", colors.night);
   root.style.setProperty("--accent", colors.accent);
-  const dayRgb = hexToRgb(colors.day);
-  const nightRgb = hexToRgb(colors.night);
-  const accentRgb = hexToRgb(colors.accent);
-  root.style.setProperty("--day-rgb", `${dayRgb.r}, ${dayRgb.g}, ${dayRgb.b}`);
-  root.style.setProperty("--night-rgb", `${nightRgb.r}, ${nightRgb.g}, ${nightRgb.b}`);
-  root.style.setProperty("--accent-rgb", `${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}`);
 }
 
 function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio, centroid = { x: 0.5, y: 0.5 }) {
@@ -284,16 +262,8 @@ function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio, centro
     document.body.style.background = "#000";
     return;
   }
-  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
-  const themeChanged = settings.themeKey !== lastBgSnapshot.theme;
-  const deltaDay = Math.abs(dayRatio - (lastBgSnapshot.day ?? dayRatio));
-  const deltaTop = Math.abs(topHalfRatio - (lastBgSnapshot.top ?? topHalfRatio));
-  const deltaCentroid = Math.hypot(centroid.x - (lastBgSnapshot.cx ?? centroid.x), centroid.y - (lastBgSnapshot.cy ?? centroid.y));
-  if (!themeChanged && now - lastBgUpdate < 90 && deltaDay < 0.01 && deltaTop < 0.04 && deltaCentroid < 0.12) {
-    return;
-  }
   if (!backgroundSeed) refreshBackgroundSeed();
-
+  
   // Ambilight: Project colors outward based on game state
   const dayColor = colors.day;
   const nightColor = colors.night;
@@ -302,11 +272,11 @@ function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio, centro
   // Strong intensity based on dominance
   const dayPower = Math.pow(dayRatio, 0.8) * 0.7;
   const nightPower = Math.pow(1 - dayRatio, 0.8) * 0.7;
-
+  
   // Position-based projections
   const topDayPower = Math.pow(topHalfRatio, 0.9) * 0.5;
   const bottomNightPower = Math.pow(1 - topHalfRatio, 0.9) * 0.5;
-
+  
   // Centroid-based accent glow
   const centroidX = clamp(centroid.x * 100, 10, 90);
   const centroidY = clamp(centroid.y * 100, 10, 90);
@@ -320,10 +290,17 @@ function updateDynamicBackground(dayRatio = 0.5, topHalfRatio = dayRatio, centro
     radial-gradient(ellipse at ${centroidX}% ${centroidY}%, ${rgba(accentColor, accentPower)}, transparent 35%),
     linear-gradient(135deg, ${rgba(nightColor, 0.3)} 0%, ${rgba(dayColor, 0.15)} 100%)
   `;
+  
+  const stars =
+    settings.themeKey === "starfield"
+      ? `,
+    radial-gradient(1px 1px at 18% 22%, rgba(255, 255, 255, 0.26), transparent 50%),
+    radial-gradient(1px 1px at 64% 14%, rgba(255, 255, 255, 0.24), transparent 50%),
+    radial-gradient(1px 1px at 82% 68%, rgba(255, 255, 255, 0.2), transparent 50%),
+    radial-gradient(1px 1px at 32% 78%, rgba(255, 255, 255, 0.22), transparent 50%)`
+      : "";
 
-  document.body.style.background = bg;
-  lastBgUpdate = now;
-  lastBgSnapshot = { theme: settings.themeKey, day: dayRatio, top: topHalfRatio, cx: centroid.x, cy: centroid.y };
+  document.body.style.background = bg + stars;
 }
 
 function nonLinearTileSize(raw) {
@@ -334,46 +311,42 @@ function nonLinearTileSize(raw) {
 }
 
 function nonLinearChaos(raw) {
-  const t = Math.pow(raw / 100, 1.6);
-  const base = 0.06;
-  return parseFloat((base + t * 0.9).toFixed(3));
+  const t = Math.pow(raw / 100, 2.4);
+  return parseFloat((t * 1.1).toFixed(3));
 }
 
 function updateBallRadius() {
-  const style = currentBallStyle;
+  const style = normalizeBallStyle(settings.ballStyle);
   const scaleMap = {
-    glow: 0.52,
-    halo: 0.54,
-    fill: 0.5,
     grid: 0.48,
     trail: 0.5,
     comet: 0.52,
     spark: 0.48,
-    glitch: 0.5,
-    pixel: 0.48,
-    bubble: 0.52,
-    emoji: 0.55
+    pixel: 0.45,
+    shatter: 0.48,
+    bubble: 0.5
+  };trail: 0.5,
+    comet: 0.52,
+    spark: 0.48
   };
   const scale = scaleMap[style] || 0.44;
   ballRadius = settings.tileSize * scale;
 }
 
 function updateDerived() {
-  // Original uses MIN_SPEED = 5, MAX_SPEED = 10
-  // speedMood acts as a multiplier from 0.2x to 20x
-  // At default speedMood = 1.2, we want roughly 5-10 like the original
-  const baseMin = 4;
-  const baseMax = 9;
-  minSpeed = baseMin * settings.speedMood;
-  maxSpeed = baseMax * settings.speedMood;
+  const t = clamp((settings.speedMood - SPEED_MIN) / (SPEED_MAX - SPEED_MIN), 0, 1);
+  const lift = Math.pow(t, 0.82);
+  const punch = Math.pow(t, 1.2);
+  minSpeed = 1 + settings.speedMood * 0.7 + lift * 8;
+  maxSpeed = 3 + settings.speedMood * 1.4 + punch * 28;
 }
 
 function setSpeedMood(value) {
   settings.speedMood = clamp(value, SPEED_MIN, SPEED_MAX);
-  speedValue.textContent = `${settings.speedMood.toFixed(2)} x`;
+  speedValue.textContent = `${settings.speedMood.toFixed(2)}x`;
   const pct = ((settings.speedMood - SPEED_MIN) / (SPEED_MAX - SPEED_MIN)) * 100;
-  speedDialFill.style.width = `${pct}% `;
-  speedDialThumb.style.left = `${pct}% `;
+  speedDialFill.style.width = `${pct}%`;
+  speedDialThumb.style.left = `${pct}%`;
   speedDial.setAttribute("aria-valuenow", settings.speedMood.toFixed(2));
   updateDerived();
   saveSettingsToStorage();
@@ -545,8 +518,8 @@ function remapOwnership(oldOwners, oldW, oldH, newW, newH) {
 }
 
 function setFrameSize(width, height, preserveOwnership = true) {
-  const marginW = isImmersive ? 0 : 0;
-  const marginH = isImmersive ? 0 : 0;
+  const marginW = isImmersive ? 0 : 48;
+  const marginH = isImmersive ? 0 : 160;
   const maxW = Math.max(420, window.innerWidth - marginW);
   const maxH = Math.max(420, window.innerHeight - marginH);
   frameWidth = clamp(width, 420, maxW);
@@ -562,8 +535,8 @@ function rebuildGrid(preserveOwnership = true) {
   const oldCanvasW = canvas.width || frameWidth;
   const oldCanvasH = canvas.height || frameHeight;
 
-  gridWidth = Math.max(8, Math.ceil(frameWidth / settings.tileSize));
-  gridHeight = Math.max(8, Math.ceil(frameHeight / settings.tileSize));
+  gridWidth = Math.max(8, Math.round(frameWidth / settings.tileSize));
+  gridHeight = Math.max(8, Math.round(frameHeight / settings.tileSize));
   canvas.width = gridWidth * settings.tileSize;
   canvas.height = gridHeight * settings.tileSize;
   frameWidth = canvas.width;
@@ -572,6 +545,10 @@ function rebuildGrid(preserveOwnership = true) {
   canvasFrame.style.height = `${frameHeight}px`;
 
   ownership = remapOwnership(oldOwnership, oldW, oldH, gridWidth, gridHeight);
+  grid = Array.from({ length: gridWidth * gridHeight }, (_, idx) => ({
+    x: (idx % gridWidth) * settings.tileSize,
+    y: Math.floor(idx / gridWidth) * settings.tileSize
+  }));
 
   const scaleX = canvas.width / oldCanvasW;
   const scaleY = canvas.height / oldCanvasH;
@@ -590,13 +567,10 @@ function rebuildGrid(preserveOwnership = true) {
 }
 
 function createBalls() {
-  // Like the original: simple diagonal velocities
-  // Original uses vx:8, vy:-8 for ball 0, vx:-8, vy:8 for ball 1
-  const speed = (minSpeed + maxSpeed) / 2;
-  const diagSpeed = speed * 0.707; // sqrt(2)/2 for 45 degree angle
+  const base = minSpeed + (maxSpeed - minSpeed) * 0.32;
   balls = [
-    { owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: diagSpeed, vy: -diagSpeed, history: [] },
-    { owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: -diagSpeed, vy: diagSpeed, history: [] }
+    { owner: 0, x: canvas.width * 0.25, y: canvas.height * 0.5, vx: base, vy: -base, history: [] },
+    { owner: 1, x: canvas.width * 0.75, y: canvas.height * 0.5, vx: -base, vy: base, history: [] }
   ];
 }
 
@@ -644,29 +618,6 @@ function buildBallPalette(baseHex, accentHex) {
     depth: mixHex(baseHex, light ? "#0b1e33" : "#ffffff", light ? 0.3 : 0.2),
     trail: liftToContrast(trailBase, 0.4)
   };
-}
-
-const ballPaletteCache = {
-  day: null,
-  night: null,
-  accent: null,
-  paletteDay: null,
-  paletteNight: null
-};
-
-function getBallPalette(owner) {
-  if (
-    ballPaletteCache.day !== colors.day ||
-    ballPaletteCache.night !== colors.night ||
-    ballPaletteCache.accent !== colors.accent
-  ) {
-    ballPaletteCache.day = colors.day;
-    ballPaletteCache.night = colors.night;
-    ballPaletteCache.accent = colors.accent;
-    ballPaletteCache.paletteDay = buildBallPalette(colors.day, colors.accent);
-    ballPaletteCache.paletteNight = buildBallPalette(colors.night, colors.accent);
-  }
-  return owner === 0 ? ballPaletteCache.paletteDay : ballPaletteCache.paletteNight;
 }
 
 function setScoreBarVisibility(hidden) {
@@ -717,6 +668,11 @@ function handleChromePeek(e) {
   }
 }
 
+function drawTile(tile, owner) {
+  ctx.fillStyle = owner === 0 ? colors.day : colors.night;
+  ctx.fillRect(tile.x, tile.y, settings.tileSize, settings.tileSize);
+}
+
 function paintBall(ctxTarget, ball, palette, style, radius) {
   const baseColor = ball.owner === 0 ? colors.day : colors.night;
   const accent = colors.accent;
@@ -749,42 +705,29 @@ function paintBall(ctxTarget, ball, palette, style, radius) {
     ctxTarget.stroke();
     ctxTarget.shadowBlur = 0;
   } else if (style === "halo") {
-    // Orbital Ring: Multiple concentric rings with a strong core
     const contrast = palette.isLight ? colors.night : "#ffffff";
-
-    // Outer glow
-    const halo = ctxTarget.createRadialGradient(0, 0, radius * 0.6, 0, 0, radius * 1.8);
-    halo.addColorStop(0, rgba(palette.rim, 0.45));
-    halo.addColorStop(0.5, rgba(palette.depth, 0.15));
+    const halo = ctxTarget.createRadialGradient(0, 0, radius * 0.45, 0, 0, radius * 1.55);
+    halo.addColorStop(0, rgba(palette.rim, 0.65));
+    halo.addColorStop(0.6, rgba(palette.depth, 0.32));
     halo.addColorStop(1, "rgba(0,0,0,0)");
     ctxTarget.fillStyle = halo;
     ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius * 1.8, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-    // Core
-    ctxTarget.fillStyle = rgba(palette.rim, 0.9);
-    ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-    // Orbital Rings
-    ctxTarget.strokeStyle = rgba(contrast, 0.8);
-    ctxTarget.lineWidth = radius * 0.12;
-    ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
-    ctxTarget.stroke();
-
-    ctxTarget.strokeStyle = rgba(palette.outline, 0.6);
-    ctxTarget.lineWidth = radius * 0.08;
-    ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius * 0.95, 0, Math.PI * 2);
-    ctxTarget.stroke();
-
-    ctxTarget.strokeStyle = rgba(palette.rim, 0.4);
-    ctxTarget.lineWidth = radius * 0.06;
-    ctxTarget.beginPath();
     ctxTarget.arc(0, 0, radius * 1.25, 0, Math.PI * 2);
+    ctxTarget.fill();
+
+    const ring = ctxTarget.createLinearGradient(-radius, -radius, radius, radius);
+    ring.addColorStop(0, rgba(contrast, 0.85));
+    ring.addColorStop(1, rgba(palette.rim, 0.95));
+    ctxTarget.lineWidth = Math.max(2.4, radius * 0.34);
+    ctxTarget.strokeStyle = ring;
+    ctxTarget.beginPath();
+    ctxTarget.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
+    ctxTarget.stroke();
+
+    ctxTarget.strokeStyle = rgba(palette.outline, 0.68);
+    ctxTarget.lineWidth = 1.3;
+    ctxTarget.beginPath();
+    ctxTarget.arc(0, 0, radius * 0.78, 0, Math.PI * 2);
     ctxTarget.stroke();
   } else if (style === "grid") {
     ctxTarget.save();
@@ -912,80 +855,9 @@ function paintBall(ctxTarget, ball, palette, style, radius) {
     ctxTarget.fill();
     ctxTarget.strokeStyle = rgba(palette.outline, 0.8);
     ctxTarget.lineWidth = Math.max(1.1, radius * 0.1);
+    ctxTarget.beginPath();
+    ctxTarget.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
     ctxTarget.stroke();
-  } else if (style === "glitch") {
-    const contrast = palette.isLight ? "#000" : "#fff";
-    ctxTarget.fillStyle = rgba(palette.rim, 0.85);
-    ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius * 0.9, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-    // Glitch slices
-    const slices = 4;
-    for (let i = 0; i < slices; i++) {
-      const h = (radius * 2) / slices;
-      const y = -radius + i * h;
-      const offset = (Math.random() - 0.5) * radius * 0.4;
-      ctxTarget.fillStyle = i % 2 === 0 ? rgba(palette.depth, 0.8) : rgba(contrast, 0.8);
-      ctxTarget.fillRect(-radius + offset, y, radius * 2, h * 0.8);
-    }
-
-    // Digital artifacts
-    ctxTarget.fillStyle = rgba(colors.accent, 0.9);
-    ctxTarget.fillRect(-radius * 0.5, -radius * 0.2, radius * 0.2, radius * 0.2);
-    ctxTarget.fillRect(radius * 0.3, radius * 0.4, radius * 0.3, radius * 0.1);
-
-  } else if (style === "pixel") {
-    const pxSize = radius * 0.4;
-    const steps = Math.ceil(radius * 2 / pxSize);
-    for (let x = 0; x < steps; x++) {
-      for (let y = 0; y < steps; y++) {
-        const rx = -radius + x * pxSize;
-        const ry = -radius + y * pxSize;
-        const dist = Math.hypot(rx + pxSize / 2, ry + pxSize / 2);
-        if (dist < radius) {
-          // Checkboard pattern-ish
-          const isRim = dist > radius * 0.6;
-          ctxTarget.fillStyle = isRim ? rgba(palette.rim, 0.9) : rgba(palette.depth, 0.8);
-          if (Math.random() > 0.9) ctxTarget.fillStyle = rgba(colors.accent, 1);
-          ctxTarget.fillRect(rx, ry, pxSize - 1, pxSize - 1);
-        }
-      }
-    }
-  } else if (style === "bubble") {
-    // Transparent body
-    ctxTarget.fillStyle = rgba(palette.rim, 0.15);
-    ctxTarget.beginPath();
-    ctxTarget.arc(0, 0, radius, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-    // Rim
-    ctxTarget.strokeStyle = rgba(palette.rim, 0.6);
-    ctxTarget.lineWidth = 1.5;
-    ctxTarget.stroke();
-
-    // Strong highlight
-    ctxTarget.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctxTarget.beginPath();
-    ctxTarget.ellipse(-radius * 0.4, -radius * 0.4, radius * 0.3, radius * 0.15, -Math.PI / 4, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-    // Secondary highlight
-    ctxTarget.fillStyle = "rgba(255, 255, 255, 0.4)";
-    ctxTarget.beginPath();
-    ctxTarget.arc(radius * 0.5, radius * 0.5, radius * 0.1, 0, Math.PI * 2);
-    ctxTarget.fill();
-
-  } else if (style === "emoji") {
-    ctxTarget.font = `${radius * 2.2}px "Segoe UI Emoji", "Apple Color Emoji", sans - serif`;
-    ctxTarget.textAlign = "center";
-    ctxTarget.textBaseline = "middle";
-    const emojis = ["🌗", "🌖", "🌑", "🪐", "✨", "💫", "☄️", "🌟"];
-    // Deterministic emoji based on owner/palette to avoid flickering, or just random?
-    // Random here would flicker every frame which is bad.
-    // Use ball owner to pick.
-    const e = ball.owner === 0 ? "☀️" : "🌙";
-    ctxTarget.fillText(e, 0, radius * 0.2); // slight offset for baseline
   } else {
     const contrastColor = palette.isLight ? colors.night : "#ffffff";
     const glow = ctxTarget.createRadialGradient(0, 0, radius * 0.3, 0, 0, radius * 1.35);
@@ -1018,49 +890,36 @@ function paintBall(ctxTarget, ball, palette, style, radius) {
   ctxTarget.restore();
 }
 function drawBall(ball) {
-  const palette = getBallPalette(ball.owner);
-  paintBall(ctx, ball, palette, currentBallStyle, ballRadius);
+  const baseColor = ball.owner === 0 ? colors.day : colors.night;
+  const palette = buildBallPalette(baseColor, colors.accent);
+  paintBall(ctx, ball, palette, normalizeBallStyle(settings.ballStyle), ballRadius);
 }
 
 function detectCollision(ball) {
-  const tileSize = settings.tileSize;
-  const minCol = clamp(Math.floor((ball.x - ballRadius) / tileSize), 0, gridWidth - 1);
-  const maxCol = clamp(Math.floor((ball.x + ballRadius) / tileSize), 0, gridWidth - 1);
-  const minRow = clamp(Math.floor((ball.y - ballRadius) / tileSize), 0, gridHeight - 1);
-  const maxRow = clamp(Math.floor((ball.y + ballRadius) / tileSize), 0, gridHeight - 1);
+  const left = ball.x - ballRadius;
+  const right = ball.x + ballRadius;
+  const top = ball.y - ballRadius;
+  const bottom = ball.y + ballRadius;
 
-  // Like the original: bounce off each tile individually for more erratic movement
-  for (let row = minRow; row <= maxRow; row++) {
-    const rowOffset = row * gridWidth;
-    for (let col = minCol; col <= maxCol; col++) {
-      const idx = rowOffset + col;
-      if (ownership[idx] === ball.owner) continue;
-
-      // Claim the tile
+  grid.forEach((tile, idx) => {
+    const tileLeft = tile.x;
+    const tileRight = tile.x + settings.tileSize;
+    const tileTop = tile.y;
+    const tileBottom = tile.y + settings.tileSize;
+    if (right > tileLeft && left < tileRight && bottom > tileTop && top < tileBottom && ownership[idx] !== ball.owner) {
       ownership[idx] = ball.owner;
-
-      // Calculate displacement from tile center
-      const tileCenterX = (col + 0.5) * tileSize;
-      const tileCenterY = (row + 0.5) * tileSize;
-      const dx = ball.x - tileCenterX;
-      const dy = ball.y - tileCenterY;
-
-      // Bounce off the axis with greater displacement (like original)
-      // Add slight randomness to prevent infinite stable loops
-      const jitter = (Math.random() - 0.5) * 0.5;
+      const dx = ball.x - (tile.x + settings.tileSize / 2);
+      const dy = ball.y - (tile.y + settings.tileSize / 2);
       if (Math.abs(dx) > Math.abs(dy)) {
         ball.vx = -ball.vx;
-        ball.vy += jitter;
       } else {
         ball.vy = -ball.vy;
-        ball.vx += jitter;
       }
     }
-  }
+  });
 }
 
 function checkBoundaries(ball) {
-  // Simple boundary checks like the original - just flip velocity
   if (ball.x < ballRadius || ball.x > canvas.width - ballRadius) {
     ball.vx = -ball.vx;
     ball.x = clamp(ball.x, ballRadius, canvas.width - ballRadius);
@@ -1072,29 +931,13 @@ function checkBoundaries(ball) {
 }
 
 function updateBall(ball) {
-  // Keep history for trail effects
   ball.history = ball.history || [];
   ball.history.unshift({ x: ball.x, y: ball.y });
-  const style = currentBallStyle;
+  const style = normalizeBallStyle(settings.ballStyle);
   const maxHistory = style === "comet" ? 18 : 14;
   if (ball.history.length > maxHistory) ball.history.pop();
-
-  // Simple acceleration like the original (ACCELERATION = 0.1)
-  // Scale by chaos setting: base 0.1, up to 0.4 at max chaos
-  const acceleration = 0.1 + settings.chaos * 0.3;
-  ball.vx += (Math.random() - 0.5) * acceleration;
-  ball.vy += (Math.random() - 0.5) * acceleration;
-
-  // Prevent boring vertical/horizontal loops by enforcing min axial speed
-  const minAxisSpeed = 0.6;
-  if (Math.abs(ball.vx) < minAxisSpeed) {
-    ball.vx = (ball.vx >= 0 ? 1 : -1) * minAxisSpeed;
-  }
-  if (Math.abs(ball.vy) < minAxisSpeed) {
-    ball.vy = (ball.vy >= 0 ? 1 : -1) * minAxisSpeed;
-  }
-
-  // Speed clamping
+  ball.vx += (Math.random() - 0.5) * settings.chaos;
+  ball.vy += (Math.random() - 0.5) * settings.chaos;
   const speed = Math.hypot(ball.vx, ball.vy);
   if (speed > maxSpeed) {
     const scale = maxSpeed / speed;
@@ -1106,7 +949,6 @@ function updateBall(ball) {
     ball.vx *= scale;
     ball.vy *= scale;
   }
-
   ball.x += ball.vx;
   ball.y += ball.vy;
 }
@@ -1114,25 +956,12 @@ function updateBall(ball) {
 function updateScoreUI(dayScore, nightScore, topHalfRatio, centroid) {
   const total = dayScore + nightScore || 1;
   const dayRatio = dayScore / total;
-  const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+  scoreDayLabel.textContent = `Light ${dayScore}`;
+  scoreNightLabel.textContent = `Dark ${nightScore}`;
+  scoreDayBar.style.width = `${dayRatio * 100}%`;
+  scoreNightBar.style.width = `${(1 - dayRatio) * 100}%`;
   const overlayNeeded = frameWidth > window.innerWidth * 0.85 || frameHeight > window.innerHeight * 0.75;
-  const overlayChanged = overlayNeeded !== lastScoreSnapshot.overlay;
-  const ratioChanged = Math.abs(dayRatio - (lastScoreSnapshot.ratio ?? dayRatio)) > 0.002;
-  const shouldUpdateScore =
-    overlayChanged ||
-    ratioChanged ||
-    now - lastScoreUpdate > 120 ||
-    dayScore !== lastScoreSnapshot.day ||
-    nightScore !== lastScoreSnapshot.night;
-  if (shouldUpdateScore) {
-    scoreDayLabel.textContent = `Light ${dayScore} `;
-    scoreNightLabel.textContent = `Dark ${nightScore} `;
-    scoreDayBar.style.width = `${dayRatio * 100}% `;
-    scoreNightBar.style.width = `${(1 - dayRatio) * 100}% `;
-    scoreNotch.classList.toggle("overlay", overlayNeeded);
-    lastScoreSnapshot = { day: dayScore, night: nightScore, ratio: dayRatio, overlay: overlayNeeded };
-    lastScoreUpdate = now;
-  }
+  scoreNotch.classList.toggle("overlay", overlayNeeded);
   updateDynamicBackground(dayRatio, topHalfRatio, centroid);
 }
 
@@ -1144,48 +973,22 @@ function render() {
   let topTotal = 0;
   let dayMassX = 0;
   let dayMassY = 0;
-  const tileSize = settings.tileSize;
-  const halfTile = tileSize * 0.5;
-  const halfHeight = canvas.height / 2;
-  const dayFill = colors.day;
-  const nightFill = colors.night;
-  let lastOwner = -1;
 
-  for (let row = 0; row < gridHeight; row++) {
-    const y = row * tileSize;
-    const isTopRow = y < halfHeight;
-    if (isTopRow) topTotal += gridWidth;
-
-    const rowOffset = row * gridWidth;
-    let col = 0;
-    while (col < gridWidth) {
-      const idx = rowOffset + col;
-      const owner = ownership[idx];
-      let runEnd = col + 1;
-      while (runEnd < gridWidth && ownership[rowOffset + runEnd] === owner) {
-        runEnd++;
-      }
-      const runLen = runEnd - col;
-
-      if (owner !== lastOwner) {
-        ctx.fillStyle = owner === 0 ? dayFill : nightFill;
-        lastOwner = owner;
-      }
-      ctx.fillRect(col * tileSize, y, runLen * tileSize, tileSize);
-
-      if (owner === 0) {
-        dayScore += runLen;
-        const lastCol = runEnd - 1;
-        dayMassX += tileSize * runLen * (col + lastCol + 1) * 0.5;
-        dayMassY += runLen * (y + halfTile);
-        if (isTopRow) topDay += runLen;
-      } else {
-        nightScore += runLen;
-      }
-
-      col = runEnd;
+  grid.forEach((tile, idx) => {
+    const owner = ownership[idx];
+    drawTile(tile, owner);
+    if (owner === 0) {
+      dayScore++;
+      dayMassX += tile.x + settings.tileSize * 0.5;
+      dayMassY += tile.y + settings.tileSize * 0.5;
+    } else {
+      nightScore++;
     }
-  }
+    if (tile.y < canvas.height / 2) {
+      topTotal++;
+      if (owner === 0) topDay++;
+    }
+  });
 
   balls.forEach((ball) => {
     drawBall(ball);
@@ -1238,13 +1041,8 @@ function swapSides() {
 }
 
 function applyTheme(key, { skipSave } = {}) {
-  const normalizedKey = normalizeThemeKey(key);
-  const resolvedTheme = normalizedKey === "custom" ? null : getThemeByKey(normalizedKey);
-  settings.themeKey = normalizedKey === "custom" ? "custom" : resolvedTheme.key;
-  const theme =
-    normalizedKey === "custom"
-      ? { day: settings.dayColor, night: settings.nightColor, accent: settings.accentColor }
-      : resolvedTheme;
+  settings.themeKey = key;
+  const theme = key === "custom" ? { day: settings.dayColor, night: settings.nightColor, accent: settings.accentColor } : getThemeByKey(key);
   settings.dayColor = theme.day;
   settings.nightColor = theme.night;
   settings.accentColor = theme.accent;
@@ -1283,7 +1081,7 @@ function updateThemeUI() {
 }
 
 function updateBallUI() {
-  const style = ballStyles.find((b) => b.key === currentBallStyle) || ballStyles[0];
+  const style = ballStyles.find((b) => b.key === normalizeBallStyle(settings.ballStyle)) || ballStyles[0];
   ballLabel.textContent = style.label;
   ensureBallCanvas(ballSwatch, style.key);
   ballPanel.querySelectorAll(".picker__option").forEach((opt) => {
@@ -1302,9 +1100,7 @@ function buildThemePicker() {
     option.setAttribute("role", "option");
     const name = document.createElement("div");
     name.className = "picker__name";
-    const nameText = document.createElement("span");
-    nameText.textContent = theme.label;
-    name.appendChild(nameText);
+    name.textContent = theme.label;
     const swatchRow = document.createElement("div");
     swatchRow.className = "picker__swatch-row";
     const colorsToUse =
@@ -1377,8 +1173,7 @@ function togglePicker(pickerEl, buttonEl) {
 }
 
 function setBallStyle(key, { skipSave } = {}) {
-  currentBallStyle = normalizeBallStyle(key);
-  settings.ballStyle = currentBallStyle;
+  settings.ballStyle = normalizeBallStyle(key);
   updateBallRadius();
   updateBallUI();
   if (!skipSave) saveSettingsToStorage();
@@ -1427,7 +1222,7 @@ function renderBallPreview(styleKey, canvas) {
 }
 
 function updateBallPickerPreviews() {
-  const currentStyle = currentBallStyle;
+  const currentStyle = normalizeBallStyle(settings.ballStyle);
   ballPanel.querySelectorAll(".picker__option").forEach((opt) => {
     const key = opt.dataset.key;
     const canvas = opt.querySelector("canvas");
@@ -1451,13 +1246,14 @@ function resetSettingsToDefault() {
   dayColorInput.value = colors.day;
   nightColorInput.value = colors.night;
   tileSizeInput.value = settings.tileSizeRaw;
-  tileSizeValue.textContent = `${settings.tileSize} px`;
+  tileSizeValue.textContent = `${settings.tileSize}px`;
   chaosInput.value = settings.chaosRaw;
   chaosValue.textContent = settings.chaos.toFixed(2);
   setSpeedMood(settings.speedMood);
   updateCssPalette();
   updateThemeUI();
   setBallStyle(settings.ballStyle, { skipSave: true });
+  updateBallRadius();
   rebuildGrid(true);
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
@@ -1526,7 +1322,7 @@ function initControls() {
   tileSizeInput.addEventListener("input", (e) => {
     settings.tileSizeRaw = Number(e.target.value);
     settings.tileSize = nonLinearTileSize(settings.tileSizeRaw);
-    tileSizeValue.textContent = `${settings.tileSize} px`;
+    tileSizeValue.textContent = `${settings.tileSize}px`;
     updateBallRadius();
     rebuildGrid(true);
     saveSettingsToStorage();
@@ -1644,7 +1440,7 @@ function initControls() {
 
   // Initialize displays from loaded settings
   tileSizeInput.value = settings.tileSizeRaw;
-  tileSizeValue.textContent = `${settings.tileSize} px`;
+  tileSizeValue.textContent = `${settings.tileSize}px`;
   chaosInput.value = settings.chaosRaw;
   chaosValue.textContent = settings.chaos.toFixed(2);
   setSpeedMood(settings.speedMood);
