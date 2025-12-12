@@ -120,6 +120,8 @@ let cinematicAssistOwner = null;
 let cinematicAssistStrength = 0;
 let cinematicAssistFrames = 0;
 let cinematicLastDominance = 0.5;
+let ballPairStuckFrames = 0;
+let lastBallPairDistance = null;
 let lastBgUpdate = 0;
 let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
 let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
@@ -1205,6 +1207,54 @@ function updateBall(ball) {
   ball.y += ball.vy;
 }
 
+function resolveBallPairStuckness() {
+  if (balls.length < 2) return;
+  const a = balls[0];
+  const b = balls[1];
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dist = Math.hypot(dx, dy);
+  const closeThreshold = ballRadius * 2.1;
+  const relVx = a.vx - b.vx;
+  const relVy = a.vy - b.vy;
+  const relSpeed = Math.hypot(relVx, relVy);
+
+  const distDelta = lastBallPairDistance === null ? 0 : Math.abs(dist - lastBallPairDistance);
+  lastBallPairDistance = dist;
+
+  const isClose = dist < closeThreshold;
+  const barelySeparating = distDelta < ballRadius * 0.06;
+  const lowRelativeSpeed = relSpeed < maxSpeed * 0.25;
+
+  if (isClose && (lowRelativeSpeed || barelySeparating)) {
+    ballPairStuckFrames += 1;
+  } else {
+    ballPairStuckFrames = 0;
+  }
+
+  if (ballPairStuckFrames > 40) {
+    const angle = dist > 0.001 ? Math.atan2(dy, dx) : Math.random() * Math.PI * 2;
+    const nx = Math.cos(angle);
+    const ny = Math.sin(angle);
+    const overlap = clamp((closeThreshold - dist) / closeThreshold, 0, 1);
+    const baseNudge = 0.35 + settings.chaos * 0.6;
+    const nudge = baseNudge * (1 + overlap * 1.4);
+
+    a.vx += nx * nudge;
+    a.vy += ny * nudge;
+    b.vx -= nx * nudge;
+    b.vy -= ny * nudge;
+
+    const sep = ballRadius * 0.25;
+    a.x = clamp(a.x + nx * sep, ballRadius, frameWidth - ballRadius);
+    a.y = clamp(a.y + ny * sep, ballRadius, frameHeight - ballRadius);
+    b.x = clamp(b.x - nx * sep, ballRadius, frameWidth - ballRadius);
+    b.y = clamp(b.y - ny * sep, ballRadius, frameHeight - ballRadius);
+
+    ballPairStuckFrames = 0;
+  }
+}
+
 function updateScoreUI(dayScore, nightScore, topHalfRatio, centroid) {
   const total = dayScore + nightScore || 1;
   const dayRatio = dayScore / total;
@@ -1331,6 +1381,8 @@ function render() {
     checkBoundaries(ball);
     updateBall(ball);
   });
+
+  resolveBallPairStuckness();
 
   const topHalfRatio = topTotal ? topDay / topTotal : 0.5;
   const centroid =
