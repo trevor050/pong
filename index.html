@@ -114,10 +114,10 @@
     <div class="field speed-dial">
       <div class="speed-dial__header">
         <span>Speed</span>
-        <strong id="speedValue">3.00x</strong>
+        <strong id="speedValue">2.75x</strong>
       </div>
       <div class="speed-dial__rail" id="speedDial" role="slider" aria-label="Speed mood" aria-valuemin="0.2"
-        aria-valuemax="20" aria-valuenow="3.00" tabindex="0">
+        aria-valuemax="20" aria-valuenow="2.75" tabindex="0">
         <div class="speed-dial__fill" id="speedDialFill"></div>
         <div class="speed-dial__thumb" id="speedDialThumb"></div>
         <div class="speed-dial__ticks">
@@ -176,6 +176,14 @@
         <span class="toggle__visual" aria-hidden="true"></span>
         <div class="toggle__labels">
           <span>Auto-hide cursor</span>
+        </div>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="cinematicModeToggle">
+        <span class="toggle__visual" aria-hidden="true"></span>
+        <div class="toggle__labels">
+          <span>Cinematic mode <span class="info-icon" title="experimental: if one side starts running away (~70/30), the losing ball gets a tiny extra nudge so comebacks can happen. toggle off to keep it pure.">👁</span></span>
+          <small>experimental</small>
         </div>
       </label>
     </div>

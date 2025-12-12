@@ -885,6 +885,26 @@ select {
   display: block;
 }
 
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.toggle:hover .info-icon {
+  color: #ffffff;
+  border-color: rgba(111, 210, 255, 0.8);
+}
+
 .toggle__labels small {
   color: var(--muted);
   display: block;

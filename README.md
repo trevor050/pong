@@ -11,6 +11,7 @@ his is great but i just decided to make it look prettier so it can be a screensa
 
 ## what's different vs dynamic-pong-wars
 - **way more knobs**: speed mood dial, chaos slider, tile size/density slider, scatter start, swap sides, reset settings (without nuking the current board)
+- **cinematic mode (experimental)**: when a side is getting crushed (~70/30), the losing ball gets a tiny assist so comebacks can happen
 - **palette gallery** with a bunch of curated themes + custom day/night/accent pickers that autosave
 - **ball style gallery** (glow, halo, soft core, grid lines, ghost trail, comet tail, sparkburst, etc)
 - **drawer ui** so the sim stays clean; optional auto-hide chrome + hide score bar

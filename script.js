@@ -35,6 +35,7 @@ const speedDialThumb = document.querySelector("#speedDialThumb");
 const hideScoreToggle = document.querySelector("#hideScoreToggle");
 const autoHideUiToggle = document.querySelector("#autoHideUiToggle");
 const autoHideCursorToggle = document.querySelector("#autoHideCursorToggle");
+const cinematicModeToggle = document.querySelector("#cinematicModeToggle");
 const revealHotspot = document.querySelector("#revealHotspot");
 const ballPicker = document.querySelector("#ballPicker");
 const ballSelected = document.querySelector("#ballSelected");
@@ -83,13 +84,14 @@ const defaultSettings = {
   themeKey: "dayNNight",
   tileSizeRaw: 55,
   tileSize: 55,
-  speedMood: 3,
+  speedMood: 2.75,
   chaosRaw: 40,
   chaos: 0.27,
   ballStyle: "glow",
   hideScoreBar: false,
   autoHideChrome: false,
-  autoHideCursor: false
+  autoHideCursor: false,
+  cinematicMode: false
 };
 
 const settings = { ...defaultSettings };
@@ -114,6 +116,8 @@ let isNativeFullscreen = false;
 let savedSize = null;
 let chromeHideTimeout = null;
 let cursorHideTimeout = null;
+let cinematicAssistOwner = null;
+let cinematicAssistStrength = 0;
 let lastBgUpdate = 0;
 let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
 let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
@@ -226,6 +230,7 @@ function loadSettingsFromStorage() {
       hideScoreBar: saved.hideScoreBar ?? settings.hideScoreBar,
       autoHideChrome: saved.autoHideChrome ?? settings.autoHideChrome,
       autoHideCursor: saved.autoHideCursor ?? settings.autoHideCursor,
+      cinematicMode: saved.cinematicMode ?? settings.cinematicMode,
       dayColor: saved.dayColor ?? settings.dayColor,
       nightColor: saved.nightColor ?? settings.nightColor,
       accentColor: saved.accentColor ?? settings.accentColor
@@ -248,6 +253,7 @@ function saveSettingsToStorage() {
         hideScoreBar: settings.hideScoreBar,
         autoHideChrome: settings.autoHideChrome,
         autoHideCursor: settings.autoHideCursor,
+        cinematicMode: settings.cinematicMode,
         dayColor: colors.day,
         nightColor: colors.night,
         accentColor: colors.accent
@@ -742,6 +748,15 @@ function applyCursorAutoHideState(enabled) {
   if (enabled) hideCursorAfterDelay(1200);
 }
 
+function applyCinematicModeState(enabled) {
+  settings.cinematicMode = enabled;
+  if (cinematicModeToggle) cinematicModeToggle.checked = enabled;
+  if (!enabled) {
+    cinematicAssistOwner = null;
+    cinematicAssistStrength = 0;
+  }
+}
+
 function handleChromePeek(e) {
   if (!settings.autoHideChrome || configPanel.classList.contains("open")) return;
   if (isInRevealZone(e.clientX, e.clientY)) {
@@ -1076,10 +1091,12 @@ function detectCollision(ball) {
       const dx = ball.x - tileCenterX;
       const dy = ball.y - tileCenterY;
 
-      // Bounce off the axis with greater displacement (like original)
-      // Add slight randomness to prevent infinite stable loops
-      const jitterStrength = 0.4 + settings.chaos * 1.2;
-      const jitter = (Math.random() - 0.5) * jitterStrength;
+	      // Bounce off the axis with greater displacement (like original)
+	      // Add slight randomness to prevent infinite stable loops
+	      const assistJitter =
+	        settings.cinematicMode && cinematicAssistOwner === ball.owner ? cinematicAssistStrength * 1.1 : 0;
+	      const jitterStrength = 0.4 + settings.chaos * 1.2 + assistJitter;
+	      const jitter = (Math.random() - 0.5) * jitterStrength;
       if (Math.abs(dx) > Math.abs(dy)) {
         ball.vx = -ball.vx;
         ball.vy += jitter;
@@ -1137,6 +1154,28 @@ function updateBall(ball) {
     const scale = minSpeed / speed;
     ball.vx *= scale;
     ball.vy *= scale;
+  }
+
+  if (settings.cinematicMode && cinematicAssistStrength > 0 && cinematicAssistOwner === ball.owner) {
+    const boost = 1 + cinematicAssistStrength * 0.06;
+    ball.vx *= boost;
+    ball.vy *= boost;
+    const nudge = cinematicAssistStrength * (0.06 + settings.chaos * 0.08);
+    ball.vx += (Math.random() - 0.5) * nudge;
+    ball.vy += (Math.random() - 0.5) * nudge;
+
+    const assistedMax = maxSpeed * (1 + cinematicAssistStrength * 0.12);
+    const assistedMin = minSpeed * (1 + cinematicAssistStrength * 0.04);
+    const newSpeed = Math.hypot(ball.vx, ball.vy) || 0.001;
+    if (newSpeed > assistedMax) {
+      const scale = assistedMax / newSpeed;
+      ball.vx *= scale;
+      ball.vy *= scale;
+    } else if (newSpeed < assistedMin) {
+      const scale = assistedMin / newSpeed;
+      ball.vx *= scale;
+      ball.vy *= scale;
+    }
   }
 
   ball.x += ball.vx;
@@ -1217,6 +1256,32 @@ function render() {
 
       col = runEnd;
     }
+  }
+
+  const totalTiles = dayScore + nightScore || 1;
+  const dayRatio = dayScore / totalTiles;
+  if (settings.cinematicMode) {
+    const dominance = Math.max(dayRatio, 1 - dayRatio);
+    const threshold = 0.7;
+    let targetStrength = 0;
+    let targetOwner = null;
+    if (dominance > threshold) {
+      targetStrength = clamp((dominance - threshold) / (1 - threshold), 0, 1);
+      targetOwner = dayRatio > 0.5 ? 1 : 0;
+    }
+    if (targetStrength > 0) {
+      cinematicAssistStrength = cinematicAssistStrength * 0.9 + targetStrength * 0.1;
+      cinematicAssistOwner = targetOwner;
+    } else {
+      cinematicAssistStrength *= 0.9;
+      if (cinematicAssistStrength < 0.001) {
+        cinematicAssistStrength = 0;
+        cinematicAssistOwner = null;
+      }
+    }
+  } else if (cinematicAssistStrength !== 0) {
+    cinematicAssistStrength = 0;
+    cinematicAssistOwner = null;
   }
 
   balls.forEach((ball) => {
@@ -1494,6 +1559,7 @@ function resetSettingsToDefault() {
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
   applyCursorAutoHideState(settings.autoHideCursor);
+  applyCinematicModeState(settings.cinematicMode);
   saveSettingsToStorage();
   updateBallPickerPreviews();
   updateDynamicBackground();
@@ -1626,6 +1692,13 @@ function initControls() {
     });
   }
 
+  if (cinematicModeToggle) {
+    cinematicModeToggle.addEventListener("change", (e) => {
+      applyCinematicModeState(e.target.checked);
+      saveSettingsToStorage();
+    });
+  }
+
   drawerResetSettings.addEventListener("click", resetSettingsToDefault);
 
   playPauseBtn.addEventListener("click", togglePlayPause);
@@ -1707,6 +1780,7 @@ function initControls() {
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
   applyCursorAutoHideState(settings.autoHideCursor);
+  applyCinematicModeState(settings.cinematicMode);
   syncPlayPauseButtons();
   updateFullscreenHint();
   if (settings.autoHideChrome) {
