@@ -1,4 +1,4 @@
-# day / nite drift
+# endless pong
 
 **play it here:** https://pong-screensaver-5veb71d71-trevor050s-projects.vercel.app
 
