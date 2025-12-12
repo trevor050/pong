@@ -126,6 +126,7 @@ let lastBgUpdate = 0;
 let lastBgSnapshot = { theme: null, day: null, top: null, cx: null, cy: null };
 let lastScoreSnapshot = { day: null, night: null, ratio: null, overlay: null };
 let lastScoreUpdate = 0;
+let tileSizeFrameBaseline = null;
 
 const baseTheme = getThemeByKey(settings.themeKey);
 defaultSettings.dayColor = defaultSettings.dayColor || baseTheme.day;
@@ -567,10 +568,25 @@ function setFrameSize(width, height, preserveOwnership = true) {
   const marginH = isImmersive ? 0 : 0;
   const maxW = Math.max(420, window.innerWidth - marginW);
   const maxH = Math.max(420, window.innerHeight - marginH);
-  frameWidth = clamp(width, 420, maxW);
-  frameHeight = clamp(height, 420, maxH);
+  const minFrame = 240;
+  frameWidth = clamp(width, minFrame, maxW);
+  frameHeight = clamp(height, minFrame, maxH);
+  if (!tileSizeFrameBaseline) {
+    tileSizeFrameBaseline = { w: frameWidth, h: frameHeight, tile: settings.tileSize };
+  }
   rebuildGrid(preserveOwnership);
   updateFullscreenHint();
+}
+
+function applyTileSizeFrameScale(preserveOwnership = true) {
+  if (!tileSizeFrameBaseline) {
+    tileSizeFrameBaseline = { w: frameWidth, h: frameHeight, tile: settings.tileSize };
+  }
+  const base = tileSizeFrameBaseline;
+  const scale = clamp(base.tile / settings.tileSize, 0.35, 3.2);
+  const targetW = base.w * scale;
+  const targetH = base.h * scale;
+  setFrameSize(targetW, targetH, preserveOwnership);
 }
 
 function rebuildGrid(preserveOwnership = true) {
@@ -612,6 +628,7 @@ function rebuildGrid(preserveOwnership = true) {
       history: (b.history || []).map((p) => ({ x: p.x * scaleX, y: p.y * scaleY }))
     }));
   }
+  clampBallsToFrame();
   renderIfPaused();
 }
 
@@ -1126,6 +1143,41 @@ function checkBoundaries(ball) {
   }
 }
 
+function clampBallsToFrame() {
+  if (!balls || balls.length === 0) return;
+  const minX = ballRadius;
+  const maxX = frameWidth - ballRadius;
+  const minY = ballRadius;
+  const maxY = frameHeight - ballRadius;
+  balls.forEach((ball) => {
+    ball.x = clamp(ball.x, minX, maxX);
+    ball.y = clamp(ball.y, minY, maxY);
+  });
+}
+
+function rebalanceAxialBias(ball, strength = 0.3) {
+  const absVx = Math.abs(ball.vx);
+  const absVy = Math.abs(ball.vy);
+  const total = absVx + absVy;
+  if (total < 0.001) return;
+
+  const horizRatio = absVx / total;
+  const maxDominance = 0.85;
+  const minDominance = 1 - maxDominance;
+
+  if (horizRatio > maxDominance) {
+    const excess = horizRatio - maxDominance;
+    const signY = Math.sign(ball.vy) || (Math.random() < 0.5 ? -1 : 1);
+    const nudge = excess * strength * total;
+    ball.vy += signY * nudge;
+  } else if (horizRatio < minDominance) {
+    const excess = minDominance - horizRatio;
+    const signX = Math.sign(ball.vx) || (Math.random() < 0.5 ? -1 : 1);
+    const nudge = excess * strength * total;
+    ball.vx += signX * nudge;
+  }
+}
+
 function updateBall(ball) {
   // Keep history for trail effects
   ball.history = ball.history || [];
@@ -1148,6 +1200,9 @@ function updateBall(ball) {
   if (Math.abs(ball.vy) < minAxisSpeed) {
     ball.vy = (ball.vy >= 0 ? 1 : -1) * minAxisSpeed;
   }
+
+  // Gently prevent one axis from dominating too long (no horizontal/vertical bias).
+  rebalanceAxialBias(ball, 0.22 + settings.chaos * 0.35);
 
   // Speed clamping
   const speed = Math.hypot(ball.vx, ball.vy);
@@ -1173,22 +1228,10 @@ function updateBall(ball) {
     ball.vx += (Math.random() - 0.5) * nudge;
     ball.vy += (Math.random() - 0.5) * nudge;
 
-    // Bias a bit toward horizontal movement to break vertical traps.
-    const horizNudge = (Math.random() - 0.5) * strength * (0.12 + settings.chaos * 0.16);
-    ball.vx += horizNudge;
+    // Keep assists from leaning too horizontal/vertical.
+    rebalanceAxialBias(ball, 0.55 + strength * 0.6);
 
     let newSpeed = Math.hypot(ball.vx, ball.vy) || 0.001;
-    const horizRatio = Math.abs(ball.vx) / newSpeed;
-    const targetHorizRatio = 0.18 + strength * 0.22;
-    if (horizRatio < targetHorizRatio) {
-      const signX = Math.sign(ball.vx) || (Math.random() < 0.5 ? -1 : 1);
-      const desiredVx = signX * newSpeed * targetHorizRatio;
-      const remainingSq = Math.max(newSpeed * newSpeed - desiredVx * desiredVx, minAxisSpeed * minAxisSpeed);
-      const signY = Math.sign(ball.vy) || (Math.random() < 0.5 ? -1 : 1);
-      ball.vx = desiredVx;
-      ball.vy = signY * Math.sqrt(remainingSq);
-      newSpeed = Math.hypot(ball.vx, ball.vy) || newSpeed;
-    }
 
     const assistedMax = maxSpeed * (1 + strength * 0.18);
     const assistedMin = minSpeed * (1 + strength * 0.06);
@@ -1378,9 +1421,12 @@ function render() {
   balls.forEach((ball) => {
     drawBall(ball);
     detectCollision(ball);
-    checkBoundaries(ball);
     updateBall(ball);
+    checkBoundaries(ball);
   });
+
+  // Extra safety to keep everything inside after movement/size changes.
+  clampBallsToFrame();
 
   resolveBallPairStuckness();
 
@@ -1635,6 +1681,7 @@ function resetSettingsToDefault() {
   settings.accentColor = theme.accent;
   settings.tileSize = nonLinearTileSize(settings.tileSizeRaw);
   settings.chaos = nonLinearChaos(settings.chaosRaw);
+  tileSizeFrameBaseline = null;
   colors.day = settings.dayColor;
   colors.night = settings.nightColor;
   colors.accent = settings.accentColor;
@@ -1648,7 +1695,7 @@ function resetSettingsToDefault() {
   updateCssPalette();
   updateThemeUI();
   setBallStyle(settings.ballStyle, { skipSave: true });
-  rebuildGrid(true);
+  applyTileSizeFrameScale(true);
   setScoreBarVisibility(settings.hideScoreBar);
   applyChromeAutoHideState(settings.autoHideChrome);
   applyCursorAutoHideState(settings.autoHideCursor);
@@ -1721,7 +1768,7 @@ function initControls() {
     tileSizeValue.textContent = `${settings.tileSize} px`;
     updateBallRadius();
     updateDerived();
-    rebuildGrid(true);
+    applyTileSizeFrameScale(true);
     saveSettingsToStorage();
   });
 

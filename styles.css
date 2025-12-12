@@ -885,38 +885,41 @@ select {
   display: block;
 }
 
-.toggle__badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: rgba(111, 210, 255, 0.95);
-  background: rgba(111, 210, 255, 0.12);
-  border: 1px solid rgba(111, 210, 255, 0.45);
-  vertical-align: middle;
+/* Tooltip styles */
+.has-tooltip {
+  position: relative;
 }
 
-.info-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 6px;
-  border-radius: 999px;
+.has-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  width: max-content;
+  max-width: 260px;
+  padding: 8px 12px;
+  background: rgba(10, 14, 26, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #e9edf5;
   font-size: 12px;
-  line-height: 1;
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 140ms ease, transform 140ms ease;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
 }
 
-.toggle:hover .info-icon {
-  color: #ffffff;
-  border-color: rgba(111, 210, 255, 0.8);
+.has-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-4px);
+  transition-delay: 0.05s;
 }
 
 .toggle__labels small {
