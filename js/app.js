@@ -1288,7 +1288,8 @@
       },
       settings,
       nextLook,
-      setSaverMode
+      setSaverMode,
+      repaint: repaintAll
     };
   }
 
