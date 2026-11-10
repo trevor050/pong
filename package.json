@@ -1,14 +1,22 @@
 {
   "name": "endless-pong",
   "private": true,
-  "description": "Pong Wars as a screensaver: two (or four) balls fighting over a tile grid forever.",
+  "description": "Pong Wars as a screensaver: two balls fight over a tile grid forever.",
   "license": "MIT",
   "scripts": {
     "test": "node --test tests/",
-    "serve": "python3 -m http.server 5173",
+    "test:e2e": "node --test tests/e2e/app.e2e.js",
+    "serve": "node scripts/static-server.js",
+    "stamp": "node scripts/stamp-sw.js",
+    "check": "node scripts/stamp-sw.js --check && node --test tests/",
+    "profile": "node scripts/profile.js",
+    "capture": "node scripts/capture.js",
     "golden:legacy": "node tests/legacy/write-golden.js"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "^1.65.0"
   }
 }
