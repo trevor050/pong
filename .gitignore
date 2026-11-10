@@ -1,2 +1,6 @@
 .history/
 .vercel
+node_modules/
+.DS_Store
+macos/build/
+test-results/
