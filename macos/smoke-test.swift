@@ -52,8 +52,7 @@ let probe = """
 })()
 """
 
-DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
-    guard let web = findWebView(view) else { print("FAIL: no web view"); exit(1) }
+func probeState(_ web: WKWebView, _ done: @escaping ([String: Any]) -> Void) {
     web.evaluateJavaScript(probe) { result, error in
         guard let json = result as? String, error == nil,
               let state = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
@@ -62,19 +61,34 @@ DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
             exit(1)
         }
         print("web app state: \(json)")
-        let steps = state["steps"] as? Int ?? 0
-        let hidden = state["hidden"] as? Bool ?? true
-        let kiosk = state["kiosk"] as? Bool ?? false
-        web.takeSnapshot(with: nil) { image, _ in
-            if let path = snapshotPath, let tiff = image?.tiffRepresentation,
-               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-                try? png.write(to: URL(fileURLWithPath: path))
-                print("snapshot: \(path)")
+        done(state)
+    }
+}
+
+// Two samples a few seconds apart: the simulation must keep advancing.
+// (CI Macs have no GPU, so the absolute step rate there is low.)
+DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+    guard let web = findWebView(view) else { print("FAIL: no web view"); exit(1) }
+    probeState(web) { first in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            probeState(web) { second in
+                let before = first["steps"] as? Int ?? 0
+                let after = second["steps"] as? Int ?? 0
+                let hidden = second["hidden"] as? Bool ?? true
+                let kiosk = second["kiosk"] as? Bool ?? false
+                web.takeSnapshot(with: nil) { image, _ in
+                    if let path = snapshotPath, let tiff = image?.tiffRepresentation,
+                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                        try? png.write(to: URL(fileURLWithPath: path))
+                        print("snapshot: \(path)")
+                    }
+                    if hidden { print("note: display asleep or locked, so the simulation was stepped by hand (rAF is paused)") }
+                    let ok = kiosk && after > before && after > 0
+                    print(ok ? "PASS: kiosk mode, simulation advancing (\(before) -> \(after) steps)"
+                             : "FAIL: kiosk=\(kiosk) steps \(before) -> \(after)")
+                    exit(ok ? 0 : 1)
+                }
             }
-            let ok = kiosk && steps > 100
-            if hidden { print("note: display asleep or locked, so animation was stepped by hand (rAF is paused)") }
-            print(ok ? "PASS: kiosk mode, simulation at \(steps) steps" : "FAIL: kiosk=\(kiosk) steps=\(steps)")
-            exit(ok ? 0 : 1)
         }
     }
 }
