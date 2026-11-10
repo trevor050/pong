@@ -4,11 +4,11 @@
   "description": "Pong Wars as a screensaver: two balls fight over a tile grid forever.",
   "license": "MIT",
   "scripts": {
-    "test": "node --test tests/",
+    "test": "node --test tests/*.test.js",
     "test:e2e": "node --test tests/e2e/app.e2e.js",
     "serve": "node scripts/static-server.js",
     "stamp": "node scripts/stamp-sw.js",
-    "check": "node scripts/stamp-sw.js --check && node --test tests/",
+    "check": "node scripts/stamp-sw.js --check && node --test tests/*.test.js",
     "profile": "node scripts/profile.js",
     "capture": "node scripts/capture.js",
     "golden:legacy": "node tests/legacy/write-golden.js"
