@@ -20,6 +20,7 @@ done
 lipo -create build/EndlessPong-arm64 build/EndlessPong-x86_64 -output "$OUT/Contents/MacOS/EndlessPong"
 rm build/EndlessPong-arm64 build/EndlessPong-x86_64
 cp Info.plist "$OUT/Contents/Info.plist"
+cp "$ROOT/LICENSE" "$OUT/Contents/Resources/LICENSE"
 
 # The web app, minus the PWA-only files.
 cp "$ROOT/index.html" "$ROOT/styles.css" "$ROOT/favicon.svg" "$OUT/Contents/Resources/web/"

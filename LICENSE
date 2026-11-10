@@ -1,6 +1,8 @@
 MIT License
 
-Copyright (c) 2025 Marko Denic
+Copyright (c) 2024 Koen van Gilst (Pong Wars, https://github.com/vnglst/pong-wars)
+Copyright (c) 2025 Marko Denic (Dynamic Pong Wars, https://github.com/markodenic/dynamic-pong-wars)
+Copyright (c) 2025-2026 trevor050 (Endless Pong changes)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +21,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+fonts/space-grotesk-latin.woff2 is Space Grotesk by Florian Karsten and the
+Space Grotesk Project Authors, licensed under the SIL Open Font License 1.1
+(see fonts/OFL.txt).
