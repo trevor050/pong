@@ -3,26 +3,26 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Endless Pong</title>
   <meta name="description" content="A calmer Pong Wars loop made for second screens.">
-  <meta name="theme-color" content="#0b3a67">
+  <meta name="theme-color" content="#071427">
+  <meta name="color-scheme" content="dark">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Endless Pong">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Manrope:wght@400;600&display=swap"
-    rel="stylesheet">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="preload" href="fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
-  <div class="bg"></div>
-  <div class="reveal-hotspot" id="revealHotspot" aria-hidden="true"></div>
-  <div class="chrome-controls" id="chromeControls">
-    <button id="playPauseBtn" class="glass-icon" data-state="playing" aria-label="Pause">
+<body class="is-immersive">
+  <h1 class="visually-hidden">Endless Pong</h1>
+  <nav class="chrome-controls" id="chromeControls" aria-label="Controls">
+    <button id="playPauseBtn" class="glass-icon" type="button" data-state="playing" aria-label="Pause">
       <svg class="icon-svg icon-play" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M7 5.5v13l11-6.5L7 5.5Z" />
       </svg>
@@ -30,24 +30,35 @@
         <path d="M7 5.5h4v13H7zm6 0h4v13h-4z" />
       </svg>
     </button>
-    <button id="resetBtn" class="glass-icon" aria-label="Reset simulation">
+    <button id="resetBtn" class="glass-icon" type="button" aria-label="Reset board" title="Reset board (R)">
       <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
         <path
           d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
       </svg>
     </button>
-    <button id="configBtn" class="glass-icon" aria-label="Open settings">
+    <button id="saverBtn" class="glass-icon" type="button" aria-label="Start screensaver" aria-pressed="false"
+      title="Screensaver (F)">
+      <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 9V4h5v2H6v3zm11-5h5v5h-2V6h-3zM4 15h2v3h3v2H4zm14 0h2v5h-5v-2h3z" />
+      </svg>
+    </button>
+    <button id="configBtn" class="glass-icon" type="button" aria-label="Settings" title="Settings (S)"
+      aria-expanded="false" aria-controls="configPanel">
       <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path
           d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
       </svg>
     </button>
-  </div>
+  </nav>
   <main class="shell">
       <div class="canvas-frame" id="canvasFrame">
-      <canvas id="gameCanvas" width="720" height="720"></canvas>
-      <!-- Fullscreen hint button removed. JS is guarded to handle absence. -->
-      <div class="score-notch" id="scoreNotch">
+      <canvas id="tileCanvas" aria-hidden="true"></canvas>
+      <canvas id="ballCanvas" aria-hidden="true"></canvas>
+      <div class="clock" id="clock" hidden>
+        <time class="clock__time" id="clockTime"></time>
+        <span class="clock__date" id="clockDate"></span>
+      </div>
+      <div class="score-notch" id="scoreNotch" aria-hidden="true">
         <div class="score-notch__bar">
           <div class="score-notch__day"></div>
           <div class="score-notch__night"></div>
@@ -71,43 +82,44 @@
   </main>
 
   <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true"></div>
-  <aside class="drawer" id="configPanel" aria-label="Settings">
+  <aside class="drawer" id="configPanel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle"
+    aria-hidden="true" inert>
     <div class="drawer__header">
       <div>
         <p class="eyebrow">Customize</p>
-        <h2>Settings</h2>
+        <h2 id="drawerTitle">Settings</h2>
       </div>
-      <button id="closeConfig" class="icon-btn" aria-label="Close settings">×</button>
+      <button id="closeConfig" class="icon-btn" type="button" aria-label="Close settings">×</button>
     </div>
 
     <div class="drawer__quick">
-      <button id="drawerPlayPause" class="chip">Pause</button>
-      <button id="drawerReset" class="chip">Reset</button>
-      <button id="drawerFullscreen" class="chip">Fullscreen</button>
-      <button id="drawerResetSettings" class="chip">Reset settings</button>
+      <button id="drawerSaver" class="chip chip--accent" type="button">Screensaver</button>
+      <button id="drawerFullscreen" class="chip" type="button">Fullscreen</button>
+      <button id="drawerShare" class="chip" type="button">Copy link</button>
+      <button id="drawerResetSettings" class="chip" type="button">Reset settings</button>
     </div>
 
     <div class="field">
       <span>Palette</span>
       <div class="picker" id="themePicker">
-        <button class="picker__selected" id="themeSelected" aria-haspopup="true" aria-expanded="false">
+        <button class="picker__selected" id="themeSelected" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Palette">
           <div class="picker__swatches" id="themeSwatches"></div>
           <span id="themeLabel">Palette</span>
           <span class="picker__chevron">▾</span>
         </button>
-        <div class="picker__panel" id="themePanel" role="listbox"></div>
+        <div class="picker__panel" id="themePanel" role="listbox" aria-label="Palettes"></div>
       </div>
     </div>
 
     <div class="field">
       <span>Ball style</span>
       <div class="picker" id="ballPicker">
-        <button class="picker__selected" id="ballSelected" aria-haspopup="true" aria-expanded="false">
+        <button class="picker__selected" id="ballSelected" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Ball style">
           <div class="picker__swatches" id="ballSwatch"></div>
           <span id="ballLabel">Ball style</span>
           <span class="picker__chevron">▾</span>
         </button>
-        <div class="picker__panel" id="ballPanel" role="listbox"></div>
+        <div class="picker__panel" id="ballPanel" role="listbox" aria-label="Ball styles"></div>
       </div>
     </div>
 
@@ -116,15 +128,14 @@
         <span>Speed</span>
         <strong id="speedValue">2.75x</strong>
       </div>
-      <div class="speed-dial__rail" id="speedDial" role="slider" aria-label="Speed mood" aria-valuemin="0.2"
+      <div class="speed-dial__rail" id="speedDial" role="slider" aria-label="Speed" aria-valuemin="0.2"
         aria-valuemax="20" aria-valuenow="2.75" tabindex="0">
         <div class="speed-dial__fill" id="speedDialFill"></div>
         <div class="speed-dial__thumb" id="speedDialThumb"></div>
-        <div class="speed-dial__ticks">
-          <span>0.5x</span>
-          <span>5x</span>
-          <span>10x</span>
-          <span>20x</span>
+        <div class="speed-dial__ticks" aria-hidden="true">
+          <span style="left: 24.2%">5x</span>
+          <span style="left: 49.5%">10x</span>
+          <span style="left: 98.5%">20x</span>
         </div>
       </div>
     </div>
@@ -134,7 +145,7 @@
         <span>Chaos</span>
         <small id="chaosValue">0.14</small>
       </div>
-      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40">
+      <input type="range" id="chaosInput" min="0" max="100" step="1" value="40" aria-label="Chaos">
     </div>
 
     <div class="field slider-field">
@@ -142,7 +153,7 @@
         <span>Tile size</span>
         <small id="tileSizeValue">55px</small>
       </div>
-      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="55">
+      <input type="range" id="tileSizeInput" min="0" max="100" step="1" value="55" aria-label="Tile size">
     </div>
 
     <div class="field grid">
@@ -158,28 +169,28 @@
 
     <div class="field toggle-grid">
       <label class="toggle">
-        <input type="checkbox" id="hideScoreToggle">
+        <input type="checkbox" role="switch" id="hideScoreToggle">
         <span class="toggle__visual" aria-hidden="true"></span>
         <div class="toggle__labels">
           <span>Hide score</span>
         </div>
       </label>
       <label class="toggle">
-        <input type="checkbox" id="autoHideUiToggle">
+        <input type="checkbox" role="switch" id="autoHideUiToggle">
         <span class="toggle__visual" aria-hidden="true"></span>
         <div class="toggle__labels">
           <span>Auto-hide UI</span>
         </div>
       </label>
       <label class="toggle">
-        <input type="checkbox" id="autoHideCursorToggle">
+        <input type="checkbox" role="switch" id="autoHideCursorToggle">
         <span class="toggle__visual" aria-hidden="true"></span>
         <div class="toggle__labels">
           <span>Auto-hide cursor</span>
         </div>
       </label>
       <label class="toggle has-tooltip" data-tooltip="If one side starts running away (~70/30), the losing ball gets a tiny assist so comebacks can happen. Toggle off to keep it pure.">
-        <input type="checkbox" id="cinematicModeToggle">
+        <input type="checkbox" role="switch" id="cinematicModeToggle">
         <span class="toggle__visual" aria-hidden="true"></span>
         <div class="toggle__labels">
           <span>
@@ -187,15 +198,41 @@
           </span>
         </div>
       </label>
+      <label class="toggle has-tooltip" data-tooltip="Every few minutes, crossfade to the next palette and a new ball style. Also spreads wear on OLED screens.">
+        <input type="checkbox" role="switch" id="shuffleToggle">
+        <span class="toggle__visual" aria-hidden="true"></span>
+        <div class="toggle__labels">
+          <span>Shuffle looks</span>
+        </div>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" role="switch" id="clockToggle">
+        <span class="toggle__visual" aria-hidden="true"></span>
+        <div class="toggle__labels">
+          <span>Clock</span>
+        </div>
+      </label>
     </div>
 
     <div class="drawer__actions">
-      <button id="scatterBtn" class="chip">Scatter start</button>
-      <button id="swapSidesBtn" class="chip">Swap sides</button>
+      <button id="scatterBtn" class="chip" type="button">Scatter start</button>
+      <button id="swapSidesBtn" class="chip" type="button">Swap sides</button>
     </div>
+
+    <p class="drawer__keys"><kbd>Space</kbd> pause <kbd>F</kbd> screensaver <kbd>S</kbd> settings <kbd>R</kbd> reset <kbd>N</kbd> next look</p>
+    <p class="drawer__credit">
+      Built on <a href="https://github.com/markodenic/dynamic-pong-wars" target="_blank" rel="noopener">Dynamic Pong Wars</a>
+      by Marko Denic and <a href="https://github.com/vnglst/pong-wars" target="_blank" rel="noopener">Pong Wars</a>
+      by Koen van Gilst. <a href="https://github.com/trevor050/pong" target="_blank" rel="noopener">Source</a>
+    </p>
   </aside>
 
-  <script src="script.js" defer></script>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/physics.js" defer></script>
+  <script src="js/settings.js" defer></script>
+  <script src="js/render.js" defer></script>
+  <script src="js/app.js" defer></script>
 </body>
 
 </html>
