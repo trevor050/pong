@@ -136,6 +136,16 @@ test("#saver kiosk link shows no UI at all", async (t) => {
   assert.equal(await page.evaluate(() => window.endlessPong.settings.themeKey), "cosmos");
 });
 
+test("#saver kiosk keeps animating with reduced motion, with random effects held still", async (t) => {
+  // The macOS screen saver loads #saver and has no keyboard, so it can never be
+  // un-paused. Choosing a screensaver is the opt-in to movement.
+  const { page } = await open(t, { hash: "saver", reducedMotion: "reduce" });
+  assert.equal(await page.evaluate(() => document.documentElement.classList.contains("reduce-motion")), true);
+  const before = (await boardState(page)).steps;
+  await page.waitForTimeout(600);
+  assert.ok((await boardState(page)).steps > before, "kiosk simulation must advance under reduced motion");
+});
+
 test("phone viewport: fills the screen without horizontal scroll, survives rotation", async (t) => {
   const { page, errors } = await open(t, {
     viewport: { width: 390, height: 844 },

@@ -136,7 +136,10 @@
 
   const renderer = R.createRenderer(tileCanvas, ballCanvas);
   let world = null;
-  let isPlaying = !reducedMotion.matches;
+  // Reduced motion starts paused, except in kiosk mode (#saver): that is the
+  // macOS screen saver, which has no keyboard to press Play and is itself the
+  // explicit choice of an animated screen.
+  let isPlaying = kiosk || !reducedMotion.matches;
   let animationFrameId = null;
   let requestedSize = { w: window.innerWidth, h: window.innerHeight };
   let deviceScale = window.devicePixelRatio || 1;
@@ -1267,9 +1270,10 @@
 
   // Reduced motion starts paused and pauses when the preference is enabled.
   // Space remains an explicit opt-in to movement; random patterns stay fixed.
+  // Kiosk mode keeps moving (see isPlaying) but still holds random patterns.
   function applyMotionPreference() {
     renderer.setNoise(reducedMotion.matches ? () => 0.5 : Math.random);
-    if (reducedMotion.matches) {
+    if (reducedMotion.matches && !kiosk) {
       isPlaying = false;
       stopLoop();
       syncPlayPauseButtons();

@@ -52,7 +52,7 @@ stuff it does while it's in there:
 - **backgrounded tab = paused**. it doesn't secretly fast-forward to catch up when you come back
 - optional **clock** overlay that stays readable on both colors
 - **flash limits**: fast repeat tile reversals are coalesced to at most one reversal every 200 ms. rapid palette inputs commit at most every 400 ms, and glitch/pixel noise holds for 400 ms. long trails and glow stay inside a small local area, including at tiny board sizes. these are drawing limits, the simulation keeps running unchanged
-- **reduced motion** starts paused. press space or play to opt into movement; random ball patterns stay frozen
+- **reduced motion** starts paused. press space or play to opt into movement; random ball patterns stay frozen. the `#saver` kiosk (the macOS screen saver) still moves, since it has no keyboard and picking a screensaver is the opt-in
 
 ### install it
 open the site in chrome/edge and hit the install button in the address bar, or on iphone/ipad: share → add to home screen. it caches itself, so after the first visit it opens instantly and works with no internet.

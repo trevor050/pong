@@ -48,7 +48,7 @@ let probe = """
     for (let i = 0; i < 900; i++) PongPhysics.step(pong.world);
     pong.repaint();
   }
-  return JSON.stringify({ steps: pong.world.steps, hidden, kiosk: document.body.classList.contains("kiosk"), counts: pong.world.counts });
+  return JSON.stringify({ steps: pong.world.steps, hidden, kiosk: document.body.classList.contains("kiosk"), counts: pong.world.counts, reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches });
 })()
 """
 
