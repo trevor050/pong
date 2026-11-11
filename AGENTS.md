@@ -28,3 +28,5 @@ Endless Pong: Pong Wars as a screensaver. Vanilla HTML/CSS/JS, no build step, no
 - SW is cache-first: during dev, reload twice or unregister it. Playwright contexts for capture/profile use `serviceWorkers: "block"`.
 - macOS: with display asleep/locked WKWebView reports `hidden` and rAF pauses; smoke test steps manually then. Saver exits on `com.apple.screensaver.willstop` (Sonoma+ legacyScreenSaver leak).
 - Prod: Vercel project `pong-screensaver` (alias https://pong-screensaver.vercel.app), deployed by CLI, not git-connected.
+
+- `.gitattributes` forces LF for text: CRLF checkouts change the byte-derived SW version and fail `npm run check`. Keep binary assets byte-exact.
