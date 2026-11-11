@@ -51,6 +51,8 @@ stuff it does while it's in there:
 - **burn-in protection**: the whole board slowly drifts a few pixels around, one device pixel at a time so nothing gets blurry. turn on **shuffle looks** too and it crossfades to a new palette + ball style every 3 minutes
 - **backgrounded tab = paused**. it doesn't secretly fast-forward to catch up when you come back
 - optional **clock** overlay that stays readable on both colors
+- **flash limits**: fast repeat tile reversals are coalesced to at most one reversal every 200 ms. rapid palette inputs commit at most every 400 ms, and glitch/pixel noise holds for 400 ms. long trails and glow stay inside a small local area, including at tiny board sizes. these are drawing limits, the simulation keeps running unchanged
+- **reduced motion** starts paused. press space or play to opt into movement; random ball patterns stay frozen
 
 ### install it
 open the site in chrome/edge and hit the install button in the address bar, or on iphone/ipad: share → add to home screen. it caches itself, so after the first visit it opens instantly and works with no internet.

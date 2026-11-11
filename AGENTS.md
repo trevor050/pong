@@ -30,3 +30,5 @@ Endless Pong: Pong Wars as a screensaver. Vanilla HTML/CSS/JS, no build step, no
 - Prod: Vercel project `pong-screensaver` (alias https://pong-screensaver.vercel.app), deployed by CLI, not git-connected.
 
 - `.gitattributes` forces LF for text: CRLF checkouts change the byte-derived SW version and fail `npm run check`. Keep binary assets byte-exact.
+
+- Render safety: per-tile RGB/luminance direction reversals >=200 ms; palette/CSS commits >=400 ms; visual noise holds400 ms and never consumes physics RNG. Resize paints are also gated. Ball effects clip to at most22% of the conservative341x256 CSS-px field including old/new supports. Do not bypass these guards in full repaints. Reduced motion starts paused and requires explicit play.

@@ -87,6 +87,7 @@
   const kiosk = hashState.flags.saver; // #saver: chrome-less (macOS screen saver, kiosks)
   const settings = loadSettings();
   const colors = { day: settings.dayColor, night: settings.nightColor, accent: settings.accentColor };
+  let visualColors = { ...colors };
 
   function loadSettings() {
     let stored = null;
@@ -135,7 +136,7 @@
 
   const renderer = R.createRenderer(tileCanvas, ballCanvas);
   let world = null;
-  let isPlaying = true;
+  let isPlaying = !reducedMotion.matches;
   let animationFrameId = null;
   let requestedSize = { w: window.innerWidth, h: window.innerHeight };
   let deviceScale = window.devicePixelRatio || 1;
@@ -173,6 +174,10 @@
     canvasFrame.style.height = `${world.height}px`;
     applyDrift();
     renderer.drawBalls(world);
+    if (!isPlaying) {
+      clearTimeout(deferredPaint);
+      deferredPaint = setTimeout(() => renderer.drawBalls(world), 210);
+    }
     updateScoreUI(true);
   }
 
@@ -194,7 +199,10 @@
     setFrameSize(window.innerWidth, window.innerHeight);
   }
 
+  let deferredPaint = null;
   function repaintAll() {
+    clearTimeout(deferredPaint);
+    if (!isPlaying) deferredPaint = setTimeout(() => { renderer.drawBalls(world); }, 210);
     renderer.paintAllTiles(world);
     renderer.drawBalls(world);
     updateScoreUI(true);
@@ -325,10 +333,13 @@
   }
 
   function applyColorsToRenderer() {
+    visualColors = { ...colors };
     renderer.setTheme([colors.day, colors.night], colors.accent);
   }
 
   let crossfade = null;
+  let lastPaletteChange = -Infinity;
+  let paletteTimer = null;
 
   function applyTheme(key, { skipSave, animate } = {}) {
     const normalizedKey = S.normalizeThemeKey(key);
@@ -337,22 +348,33 @@
       normalizedKey === "custom"
         ? { day: settings.dayColor, night: settings.nightColor, accent: settings.accentColor }
         : S.getTheme(normalizedKey);
-    const from = { ...colors };
     colors.day = theme.day;
     colors.night = theme.night;
     colors.accent = theme.accent;
     dayColorInput.value = colors.day;
     nightColorInput.value = colors.night;
-    updateCssPalette();
-    lastBackdropKey = "";
-    if (animate && isPlaying && !reducedMotion.matches) {
-      crossfade = { from, to: { ...colors }, start: null };
-    } else {
-      crossfade = null;
-      applyColorsToRenderer();
-      if (world) repaintAll();
+    clearTimeout(paletteTimer);
+    function paintTheme() {
+      const now = performance.now();
+      // Include the CSS backdrop and previews, not only the two canvases.
+      if (!skipSave && now - lastPaletteChange < 400) {
+        paletteTimer = setTimeout(paintTheme, 400 - (now - lastPaletteChange));
+        return;
+      }
+      lastPaletteChange = now;
+      updateCssPalette();
+      lastBackdropKey = "";
+      if (animate && isPlaying && !reducedMotion.matches) {
+        crossfade = { from: { ...visualColors }, to: { ...colors }, start: null };
+      } else {
+        crossfade = null;
+        applyColorsToRenderer();
+        if (world) repaintAll();
+      }
+      updateBallPickerPreviews();
     }
-    updateThemeUI();
+    paintTheme();
+    updateThemeUI({ previews: false });
     if (!skipSave) saveSettings();
   }
 
@@ -361,15 +383,13 @@
     const t = clamp((now - crossfade.start) / CROSSFADE_MS, 0, 1);
     const ease = t * t * (3 - 2 * t);
     const { from, to } = crossfade;
-    renderer.setTheme(
-      [R.mixHex(from.day, to.day, ease), R.mixHex(from.night, to.night, ease)],
-      R.mixHex(from.accent, to.accent, ease)
-    );
+    visualColors = { day: R.mixHex(from.day, to.day, ease), night: R.mixHex(from.night, to.night, ease), accent: R.mixHex(from.accent, to.accent, ease) };
+    renderer.setTheme([visualColors.day, visualColors.night], visualColors.accent);
     renderer.paintAllTiles(world);
     if (t >= 1) crossfade = null;
   }
 
-  function updateThemeUI() {
+  function updateThemeUI({ previews = true } = {}) {
     const theme = settings.themeKey === "custom" ? { label: "Custom picks" } : S.getTheme(settings.themeKey);
     themeLabel.textContent = theme.label || "Palette";
     themeSwatches.innerHTML = "";
@@ -389,7 +409,7 @@
         });
       }
     });
-    updateBallPickerPreviews();
+    if (previews) updateBallPickerPreviews();
   }
 
   function previewTheme() {
@@ -1083,18 +1103,8 @@
     });
 
     const onColorInput = (slot) => (e) => {
-      colors[slot] = e.target.value;
-      settings.themeKey = "custom";
-      settings.dayColor = colors.day;
-      settings.nightColor = colors.night;
-      settings.accentColor = colors.accent;
-      crossfade = null;
-      updateCssPalette();
-      applyColorsToRenderer();
-      lastBackdropKey = "";
-      repaintAll();
-      updateThemeUI();
-      saveSettings();
+      settings[slot === "day" ? "dayColor" : "nightColor"] = e.target.value;
+      applyTheme("custom");
     };
     dayColorInput.addEventListener("input", onColorInput("day"));
     nightColorInput.addEventListener("input", onColorInput("night"));
@@ -1250,10 +1260,15 @@
     );
   }
 
-  // Reduced motion: freeze the per-frame random flicker of the glitch and
-  // pixel ball styles and skip palette crossfades (handled in applyTheme).
+  // Reduced motion starts paused and pauses when the preference is enabled.
+  // Space remains an explicit opt-in to movement; random patterns stay fixed.
   function applyMotionPreference() {
     renderer.setNoise(reducedMotion.matches ? () => 0.5 : Math.random);
+    if (reducedMotion.matches) {
+      isPlaying = false;
+      stopLoop();
+      syncPlayPauseButtons();
+    }
     document.documentElement.classList.toggle("reduce-motion", reducedMotion.matches);
   }
 

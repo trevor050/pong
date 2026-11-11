@@ -25,8 +25,8 @@ async function open(t, { hash = "", viewport = { width: 1280, height: 800 }, ...
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  await page.goto(site.url + (hash ? `#${hash}` : ""));
-  await page.waitForFunction(() => window.endlessPong && window.endlessPong.world.steps > 30);
+  await page.goto(site.url + (hash ? `#${hash}` : ""), { waitUntil: "commit" });
+  await page.waitForFunction(() => window.endlessPong && (window.endlessPong.world.steps > 30 || matchMedia("(prefers-reduced-motion: reduce)").matches));
   return { page, context, errors };
 }
 
@@ -158,9 +158,16 @@ test("phone viewport: fills the screen without horizontal scroll, survives rotat
   assert.deepEqual(errors, []);
 });
 
-test("reduced motion freezes flicker effects", async (t) => {
+test("reduced motion starts calm and requires an explicit play action", async (t) => {
   const { page } = await open(t, { reducedMotion: "reduce" });
   assert.equal(await page.evaluate(() => document.documentElement.classList.contains("reduce-motion")), true);
+  const before = await boardState(page);
+  await page.waitForTimeout(600);
+  assert.equal((await boardState(page)).steps, before.steps);
+  assert.equal(await page.getAttribute("#playPauseBtn", "aria-label"), "Play");
+  await page.keyboard.press("Space");
+  await page.waitForTimeout(300);
+  assert.ok((await boardState(page)).steps > before.steps);
 });
 
 test("installable and works offline after the first visit", async (t) => {
@@ -180,4 +187,56 @@ test("installable and works offline after the first visit", async (t) => {
     return document.fonts.check('16px "Space Grotesk"');
   });
   assert.equal(fontOk, true, "self-hosted font loads offline");
+});
+
+test("real canvas limits whole-board flashes at 60, 144 and 165 Hz", async (t) => {
+  const { page } = await open(t);
+  const result = await page.evaluate(() => {
+    const rows = [];
+    for (const hz of [60, 144, 165]) for (const kind of ["claims", "palettes", "rebuilds"]) {
+      const tiles = document.createElement("canvas"), balls = document.createElement("canvas");
+      const r = PongRender.createRenderer(tiles, balls);
+      const w = PongPhysics.createWorld({ width: 341, height: 256, tileSize: 14, speedMood: 20, chaos: 0.96, ballStyle: "glitch", rng: PongPhysics.mulberry32(1) });
+      w.balls = []; r.setTheme(["#ffffff", "#000000"], "#ff0000"); r.resize(w, 1, 0);
+      const c = tiles.getContext("2d"); let previous = c.getImageData(0, 0, 1, 1).data[0]; const changes = [];
+      for (let f = 1; f <= hz * 3; f++) {
+        const now = f * 1000 / hz;
+        if (kind === "palettes") r.setTheme(f % 2 ? ["#000000", "#ffffff"] : ["#ffffff", "#000000"], "#ff0000");
+        else w.ownership.fill(f % 2);
+        if (kind === "rebuilds") r.resize(w, 1, now);
+        else r.paintAllTiles(w, now);
+        r.drawBalls(w, now);
+        const next = c.getImageData(0, 0, 1, 1).data[0];
+        if (next !== previous) changes.push(now);
+        previous = next;
+      }
+      rows.push({ hz, kind, maxTransitions: Math.max(0, ...changes.map(start => changes.filter(v => v >= start && v < start + 1000).length)) });
+    }
+    return rows;
+  });
+  for (const row of result) assert.ok(row.maxTransitions <= 6, JSON.stringify(row));
+});
+
+test("all ball styles keep their flashing effects inside a bounded local area", async (t) => {
+  const { page } = await open(t);
+  const rows = await page.evaluate(() => {
+    const result = [];
+    for (const style of PongSettings.BALL_STYLES) for (const size of [14, 80]) for (const [width, height] of [[240, 420], [341, 256], [3840, 2160]]) {
+      const tiles = document.createElement("canvas"), balls = document.createElement("canvas");
+      const r = PongRender.createRenderer(tiles, balls);
+      const w = PongPhysics.createWorld({ width, height, tileSize: size, speedMood: 20, chaos: 0.96, ballStyle: style.key, rng: PongPhysics.mulberry32(1) });
+      r.setTheme(["#ffffff", "#ff0000"], "#ffffff"); r.resize(w, 1, 0);
+      for (const b of w.balls) { b.history = Array.from({ length: 18 }, (_, i) => ({ x: b.x - i * 200, y: b.y })); b.vx = 200; }
+      r.drawBalls(w, 1000);
+      const d = balls.getContext("2d").getImageData(0, 0, balls.width, balls.height).data;
+      const radius = Math.min(40, Math.sqrt(0.22 * Math.min(w.width, 341) * Math.min(w.height, 256) / (4 * Math.PI)));
+      let outside = 0;
+      for (let y = 0; y < balls.height; y++) for (let x = 0; x < balls.width; x++) {
+        if (d[(y * balls.width + x) * 4 + 3] && w.balls.every(b => Math.hypot(x + 0.5 - b.x, y + 0.5 - b.y) > radius + 1)) outside++;
+      }
+      result.push({ style: style.key, size, width, height, outside });
+    }
+    return result;
+  });
+  for (const row of rows) assert.equal(row.outside, 0, JSON.stringify(row));
 });

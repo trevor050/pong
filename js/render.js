@@ -13,6 +13,15 @@
   "use strict";
 
   const EMOJI = ["☀️", "🌙"];
+  // Opposing changes are separated by 200 ms: at most three flash pairs in
+  // any second. Monotonic fades are uninterrupted; physics never sees this.
+  const REVERSAL_MS = 200;
+  const EFFECT_RADIUS = 40; // old + new supports of both balls stay below 21,824 CSS px
+  function colorVector(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    const linear = (v) => (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    return [0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b), r, g, b];
+  }
 
   const rgbCache = new Map();
   function hexToRgb(hex) {
@@ -391,18 +400,33 @@
     let theme = { colors: ["#ffffff", "#000000"], accent: "#ffffff" };
     let palettes = [];
     let dirty = [];
-    let noise = Math.random;
+    let noise = null;
+    let shown = [];
+    let vectors = [];
+    let pending = new Set();
+    let noiseBucket = -1;
+    let noiseSeed = 0;
+    let lastResize = -Infinity;
+    let pendingResize = null;
+    let holdInitialChange = false;
+
 
     function setTheme(colors, accent) {
       theme = { colors, accent };
       palettes = colors.map((c) => buildBallPalette(c, accent));
+      vectors = colors.map(colorVector);
     }
 
     function setNoise(fn) {
-      noise = fn;
+      noise = fn === Math.random ? null : fn;
+      noiseBucket = -1;
     }
 
-    function resize(world, devicePixelRatio) {
+    function resize(world, devicePixelRatio, now = performance.now()) {
+      if (now - lastResize < REVERSAL_MS) { pendingResize = { world, devicePixelRatio }; return; }
+      holdInitialChange = lastResize !== -Infinity;
+      lastResize = now;
+      pendingResize = null;
       dpr = devicePixelRatio;
       const t = world.tileSize * dpr;
       colEdges = Array.from({ length: world.gridWidth + 1 }, (_, i) => Math.round(i * t));
@@ -418,54 +442,68 @@
       tileCtx.setTransform(1, 0, 0, 1, 0, 0);
       ballCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
       dirty = [];
-      paintAllTiles(world);
+      shown = [];
+      pending.clear();
+      paintAllTiles(world, now);
     }
 
-    // Full repaint, grouping same-owner runs into one fillRect each.
-    function paintAllTiles(world) {
-      const { gridWidth, gridHeight, ownership } = world;
-      let lastOwner = -1;
-      for (let row = 0; row < gridHeight; row++) {
-        const y = rowEdges[row];
-        const h = rowEdges[row + 1] - y;
-        const rowOffset = row * gridWidth;
-        let col = 0;
-        while (col < gridWidth) {
-          const owner = ownership[rowOffset + col];
-          let end = col + 1;
-          while (end < gridWidth && ownership[rowOffset + end] === owner) end++;
-          if (owner !== lastOwner) {
-            tileCtx.fillStyle = theme.colors[owner];
-            lastOwner = owner;
-          }
-          tileCtx.fillRect(colEdges[col], y, colEdges[end] - colEdges[col], h);
-          col = end;
-        }
-      }
+    function paintAllTiles(world, now = performance.now()) {
+      if (pendingResize) return;
+      for (let i = 0; i < world.ownership.length; i++) pending.add(i);
+      flushTiles(world, now);
     }
 
-    function paintTiles(world, indices) {
+    function paintTiles(world, indices, now = performance.now()) {
+      if (pendingResize) return;
+      for (const idx of indices) pending.add(idx);
+      flushTiles(world, now);
+    }
+
+    function flushTiles(world, now = performance.now()) {
+      if (pendingResize) return;
       const { gridWidth, ownership } = world;
-      let lastOwner = -1;
-      for (let i = 0; i < indices.length; i++) {
-        const idx = indices[i];
-        const owner = ownership[idx];
-        const col = idx % gridWidth;
-        const row = (idx - col) / gridWidth;
-        if (owner !== lastOwner) {
-          tileCtx.fillStyle = theme.colors[owner];
-          lastOwner = owner;
-        }
-        tileCtx.fillRect(colEdges[col], rowEdges[row], colEdges[col + 1] - colEdges[col], rowEdges[row + 1] - rowEdges[row]);
+      let run = null;
+      function drawRun() {
+        if (!run) return;
+        tileCtx.fillStyle = run.color;
+        tileCtx.fillRect(colEdges[run.col], rowEdges[run.row], colEdges[run.end] - colEdges[run.col], rowEdges[run.row + 1] - rowEdges[run.row]);
       }
+      for (const idx of pending) {
+        const owner = ownership[idx], color = theme.colors[owner], vector = vectors[owner];
+        const previous = shown[idx];
+        if (previous?.color === color) { pending.delete(idx); continue; }
+        const direction = vector.map((v, i) => Math.sign(v - (previous?.vector[i] ?? v)));
+        const reverses = previous && direction.some((d, i) => d && previous.direction[i] && d !== previous.direction[i]);
+        if (reverses && now - previous.turned < REVERSAL_MS) continue;
+        const firstChange = previous && previous.direction.every(d => !d);
+        if (firstChange && holdInitialChange && now - previous.turned < REVERSAL_MS) continue;
+        shown[idx] = { color, vector, direction: direction.map((d, i) => d || previous?.direction[i] || 0), turned: !previous || reverses || firstChange ? now : previous.turned };
+        pending.delete(idx);
+        const col = idx % gridWidth, row = (idx - col) / gridWidth;
+        if (run && run.row === row && run.end === col && run.color === color) run.end++;
+        else { drawRun(); run = { row, col, end: col + 1, color }; }
+      }
+      drawRun();
     }
 
-    function drawBalls(world) {
+    function drawBalls(world, now = performance.now()) {
+      if (pendingResize) {
+        if (now - lastResize < REVERSAL_MS) return;
+        resize(pendingResize.world, pendingResize.devicePixelRatio, now);
+      }
+      flushTiles(world, now);
+      // Replay one random pattern for 400 ms, independent of monitor refresh
+      // and of the simulation RNG. Reduced motion supplies constant noise.
+      const bucket = Math.floor(now / 400);
+      if (bucket !== noiseBucket) { noiseBucket = bucket; noiseSeed = noise ? (noise() * 0xffffffff) >>> 0 : (Math.imul(bucket, 2654435761) ^ 0x9e3779b9) >>> 0; }
+      let randomState = noiseSeed;
+      const visualNoise = () => { randomState = (Math.imul(randomState, 1664525) + 1013904223) >>> 0; return randomState / 4294967296; };
       for (const r of dirty) ballCtx.clearRect(r.x, r.y, r.w, r.h);
       dirty = [];
       const style = world.ballStyle;
       const radius = world.ballRadius;
       const reach = radius * (STYLE_REACH[style] || 1.2) + 14;
+      const effectRadius = Math.min(EFFECT_RADIUS, Math.sqrt(0.22 * Math.min(world.width, 341) * Math.min(world.height, 256) / (4 * Math.PI)));
       for (const ball of world.balls) {
         let minX = ball.x;
         let maxX = ball.x;
@@ -482,7 +520,14 @@
           const vy = Math.abs(ball.vy) * 0.5;
           minX -= vx; maxX += vx; minY -= vy; maxY += vy;
         }
-        paintBall(ballCtx, ball, palettes[ball.owner], style, radius, theme, noise);
+        // Long trails and large glows stay local even on a small board. The
+        // clipped support of both balls is <= 4*pi*40^2 = 20,107 CSS pixels, including old positions.
+        ballCtx.save();
+        ballCtx.beginPath();
+        ballCtx.arc(ball.x, ball.y, effectRadius, 0, Math.PI * 2);
+        ballCtx.clip();
+        paintBall(ballCtx, ball, palettes[ball.owner], style, radius, theme, visualNoise);
+        ballCtx.restore();
         dirty.push({ x: minX - reach, y: minY - reach, w: maxX - minX + reach * 2, h: maxY - minY + reach * 2 });
       }
     }
@@ -495,7 +540,7 @@
       dirty = [];
     }
 
-    return { setTheme, setNoise, resize, paintAllTiles, paintTiles, drawBalls, clearBalls };
+    return { setTheme, setNoise, resize, paintAllTiles, paintTiles, flushTiles, drawBalls, clearBalls };
   }
 
   // Picker preview, identical to the original's 60px swatch but DPR-crisp.
