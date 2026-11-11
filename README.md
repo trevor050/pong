@@ -1,6 +1,6 @@
 # endless pong
 
-**play it here:** https://pong-screensaver.vercel.app
+**play it here:** https://pong.trevorrosato.com
 
 ![two balls fighting over a tile grid](docs/media/demo.gif)
 
@@ -60,9 +60,9 @@ open the site in chrome/edge and hit the install button in the address bar, or o
 ### share a look
 the url updates as you change stuff, so whatever's in the address bar *is* your setup. there's also a **copy link** button in settings. examples:
 
-- [neo tokyo + comets](https://pong-screensaver.vercel.app/#p=neonCity&b=comet)
-- [seafoam, small tiles, clock](https://pong-screensaver.vercel.app/#p=seafoam&t=20&clock=1)
-- [shuffle everything forever](https://pong-screensaver.vercel.app/#shuffle=1&noscore=1)
+- [neo tokyo + comets](https://pong.trevorrosato.com/#p=neonCity&b=comet)
+- [seafoam, small tiles, clock](https://pong.trevorrosato.com/#p=seafoam&t=20&clock=1)
+- [shuffle everything forever](https://pong.trevorrosato.com/#shuffle=1&noscore=1)
 
 add `saver` to the hash (like `#saver&p=cosmos`) for a kiosk view with no ui at all. good for a spare monitor or a tv browser.
 
