@@ -5,7 +5,7 @@
  * changing any of them (CI fails if it is stale). A new VERSION installs in
  * the background and takes over on the next launch.
  */
-const VERSION = "endless-pong-41712459";
+const VERSION = "endless-pong-0e07d548";
 
 const PRECACHE = [
   "./",

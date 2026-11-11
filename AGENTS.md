@@ -22,7 +22,7 @@ Endless Pong: Pong Wars as a screensaver. Vanilla HTML/CSS/JS, no build step, no
 - Physics must stay bit-identical to `tests/legacy/script.legacy.js` (frozen original). Do NOT regenerate `tests/golden/physics.json` to make a failing test pass. RNG call order matters (detectCollision jitter, updateBall drift, cinematic nudge, rebalance sign, stuck nudge).
 - Ball style changes physics (radius = tileSize * BALL_RADIUS_SCALE[style]).
 - Legacy drew glitch/pixel with Math.random sharing the physics stream; scenarios avoid those styles.
-- Loop: fixed 60 steps/s with rounding accumulator (keeps 60 Hz at exactly 1 step/frame); >250 ms gaps are skipped (some Windows browsers report visible while minimized and send 1 Hz rAF).
+- Loop: fixed 60 steps/s with rounding accumulator (keeps 60 Hz at exactly 1 step/frame); >250 ms gaps are skipped (some Windows browsers report visible while minimized and send 1 Hz rAF). Balls are drawn interpolated half a step behind real time (`stepWorld`/`interpolatedBalls`, render-only; tiles still flip on steps); any non-step move of the balls disables it until the next step.
 - Saver mode oversizes the board by 2*DRIFT and translates it; `.score-notch` is position:fixed inside the transformed frame, so it drifts too.
 - Share links carry only non-defaults; `applyLink` resets omitted look keys to defaults, keeps local prefs (autoHide*).
 - SW is cache-first: during dev, reload twice or unregister it. Playwright contexts for capture/profile use `serviceWorkers: "block"`.

@@ -486,7 +486,9 @@
       drawRun();
     }
 
-    function drawBalls(world, now = performance.now()) {
+    // positions: optional per-ball {x, y} to draw at instead of the simulated
+    // position (frame interpolation on high-refresh displays).
+    function drawBalls(world, now = performance.now(), positions = null) {
       if (pendingResize) {
         if (now - lastResize < REVERSAL_MS) return;
         resize(pendingResize.world, pendingResize.devicePixelRatio, now);
@@ -504,7 +506,9 @@
       const radius = world.ballRadius;
       const reach = radius * (STYLE_REACH[style] || 1.2) + 14;
       const effectRadius = Math.min(EFFECT_RADIUS, Math.sqrt(0.22 * Math.min(world.width, 341) * Math.min(world.height, 256) / (4 * Math.PI)));
-      for (const ball of world.balls) {
+      for (let i = 0; i < world.balls.length; i++) {
+        const sim = world.balls[i];
+        const ball = positions ? { ...sim, x: positions[i].x, y: positions[i].y } : sim;
         let minX = ball.x;
         let maxX = ball.x;
         let minY = ball.y;

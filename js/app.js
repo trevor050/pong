@@ -249,18 +249,46 @@
     } else {
       stepDebt -= steps;
     }
-    for (let i = 0; i < steps; i++) P.step(world);
+    for (let i = 0; i < steps; i++) stepWorld();
 
     if (crossfade) advanceCrossfade(now);
     if (world.claimed.length) {
       renderer.paintTiles(world, world.claimed);
       world.claimed.length = 0;
     }
-    renderer.drawBalls(world);
+    // Physics runs 60 times a second; on faster displays most frames fall
+    // between two steps. stepDebt says how far real time is past the last
+    // step (-0.5 to 0.5 steps), so drawing the balls half a step behind real
+    // time moves them at an even pace at any refresh rate (144 Hz shows
+    // 2.4 frames per step, which drawn as-is is a visible 2-3-2-3 judder).
+    renderer.drawBalls(world, now, interpolatedBalls(stepDebt + 0.5));
     updateScoreUI(false);
     tickShuffle();
 
     animationFrameId = requestAnimationFrame(frame);
+  }
+
+  // Render-only interpolation. The simulation never reads these positions.
+  const ballFrom = [];
+  const ballTo = [];
+  let stepWorldRef = null;
+  function stepWorld() {
+    const balls = world.balls;
+    for (let i = 0; i < balls.length; i++) ballFrom[i] = { x: balls[i].x, y: balls[i].y };
+    P.step(world);
+    for (let i = 0; i < balls.length; i++) ballTo[i] = { x: balls[i].x, y: balls[i].y };
+    ballFrom.length = ballTo.length = balls.length;
+    stepWorldRef = world;
+  }
+
+  function interpolatedBalls(alpha) {
+    const balls = world.balls;
+    // Anything that moved the balls outside a step (resize, reset, swap)
+    // invalidates the pair; draw the true positions until the next step.
+    if (stepWorldRef !== world || balls.length !== ballTo.length) return null;
+    for (let i = 0; i < balls.length; i++) if (balls[i].x !== ballTo[i].x || balls[i].y !== ballTo[i].y) return null;
+    const t = Math.min(1, Math.max(0, alpha));
+    return balls.map((b, i) => ({ x: ballFrom[i].x + (b.x - ballFrom[i].x) * t, y: ballFrom[i].y + (b.y - ballFrom[i].y) * t }));
   }
 
   function startLoop() {
