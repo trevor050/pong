@@ -227,8 +227,13 @@
     if (lastFrameTime === null) lastFrameTime = now - STEP_MS;
     let elapsed = now - lastFrameTime;
     lastFrameTime = now;
-    // Coming back from a hidden tab or a long hitch: don't fast-forward.
-    if (elapsed > 250) elapsed = STEP_MS;
+    // Some minimized browsers throttle rAF to 1 Hz without reporting hidden.
+    // Ignore those callbacks instead of running one physics step per second.
+    if (elapsed > 250) {
+      stepDebt = 0;
+      animationFrameId = requestAnimationFrame(frame);
+      return;
+    }
     playTime += elapsed;
 
     // Rounding (rather than flooring) keeps 60 Hz displays at exactly one step
